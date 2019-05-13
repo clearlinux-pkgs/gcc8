@@ -285,10 +285,6 @@ pushd ../gcc-build
 cd -
 
 cd %{buildroot}/usr/bin
-if [ -e %{gcc_target}-g77 ]; then
-    ln -sf %{gcc_target}-g77 g77 || true
-    ln -sf g77 f77 || true
-fi
 
 find %{buildroot}/usr/ -name libiberty.a | xargs rm -f
 find %{buildroot}/usr/ -name libiberty.h | xargs rm -f
