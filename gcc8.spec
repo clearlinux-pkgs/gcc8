@@ -100,7 +100,7 @@ Provides:       libstdc++-dev
 Requires:       gcc-libs-math
 Requires:       libstdc++
 
-%description -n gcc-dev
+%description dev
 GNU cc and gcc C compilers dev files
 
 
