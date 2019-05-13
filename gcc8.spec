@@ -261,6 +261,7 @@ export LIBRARY_PATH=/usr/lib64
     --with-arch=westmere \
     --enable-cet \
     --with-gcc-major-version-only \
+    --enable-default-pie \
     --disable-libmpx
 # For GCC 9, add:
 #  --with-gcc-major-version-only
