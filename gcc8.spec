@@ -14,7 +14,7 @@
 %define march westmere
 %define abi_package %{nil}
 
-Name     : gcc
+Name     : gcc8
 Version  : 8.3.0
 Release  : 436
 URL      : http://www.gnu.org/software/gcc/
