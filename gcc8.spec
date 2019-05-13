@@ -85,7 +85,7 @@ Requires: gcc-doc
 %description
 GNU cc and gcc C compilers.
 
-%package -n gcc-dev
+%package dev
 License:        GPL-3.0-with-GCC-exception and GPL-3.0
 Summary:        GNU cc and gcc C compilers
 Group:          devel
@@ -106,7 +106,7 @@ GNU cc and gcc C compilers dev files
 
 
 
-%package -n libgcc1
+%package libgcc1
 License:        GPL-3.0-with-GCC-exception and GPL-3.0
 Summary:        GNU cc and gcc C compilers
 Group:          devel
@@ -114,7 +114,7 @@ Requires:       filesystem
 Provides:       libssp0
 Provides:       libgomp1
 
-%description -n libgcc1
+%description libgcc1
 GNU cc and gcc C compilers.
 
 %package libubsan
@@ -125,15 +125,15 @@ Group:          devel
 %description libubsan
 Address sanitizer runtime libs
 
-%package -n libstdc++
+%package libstdc++
 License:        GPL-3.0-with-GCC-exception and GPL-3.0
 Summary:        GNU cc and gcc C compilers
 Group:          devel
 
-%description -n libstdc++
+%description libstdc++
 GNU cc and gcc C compilers.
 
-%package -n gcc-doc
+%package doc
 License:        GPL-3.0-with-GCC-exception and GPL-3.0
 Summary:        GNU cc and gcc C compilers
 Group:          doc
@@ -154,7 +154,7 @@ Group:          devel
 %description go-lib
 GNU Compile Collection GO runtime
 
-%description -n gcc-doc
+%description doc
 GNU cc and gcc C compilers.
 
 %package locale
@@ -381,7 +381,7 @@ rm -f %{buildroot}/usr/lib64/libstdc++.so
 %exclude /usr/bin/abifiles.list
 
 
-%files -n libgcc1
+%files libgcc1
 %exclude /usr/lib64/libgcc_s.so.1
 
 %files libs-math
@@ -392,11 +392,11 @@ rm -f %{buildroot}/usr/lib64/libstdc++.so
 %exclude /usr/lib64/libitm*.so.*
 %exclude /usr/lib64/libquadmath*.so.*
 
-%files -n libstdc++
+%files libstdc++
 %exclude /usr/lib64/libstdc++.so.*
 
 
-%files -n gcc-doc
+%files doc
 %exclude %{_mandir}/man1
 %exclude %{_mandir}/man7
 %exclude %{_infodir}
