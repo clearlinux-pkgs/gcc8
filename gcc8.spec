@@ -227,7 +227,7 @@ export CPATH=/usr/include
 export LIBRARY_PATH=/usr/lib64
 
 ../%{gccpath}/configure \
-    --program-suffix=8 \
+    --program-suffix="-8" \
     --prefix=/usr \
     --with-pkgversion='Clear Linux OS for Intel Architecture'\
     --libdir=/usr/lib64/ \
@@ -302,8 +302,8 @@ mkdir -p %{buildroot}//usr/share/gdb/auto-load//usr/lib64
 rm -rf %{buildroot}/usr/share/locale 
 
 rm -f %{buildroot}/usr/bin/abifiles.list
-rm -f %{buildroot}/usr/bin/c++8
-rm -f %{buildroot}/usr/bin/gcov-dump8
+rm -f %{buildroot}/usr/bin/c++-8
+rm -f %{buildroot}/usr/bin/gcov-dump-8
 rm -f %{buildroot}/usr/lib64/libatomic.so
 rm -f %{buildroot}/usr/lib64/libitm.so
 rm -f %{buildroot}/usr/lib64/libitm.spec
@@ -311,19 +311,19 @@ rm -f %{buildroot}/usr/lib64/libquadmath.so
 rm -f %{buildroot}/usr/lib64/libstdc++.so
 
 %files
-/usr/bin/%{gcc_target}-gcc-ar8
-/usr/bin/%{gcc_target}-gcc-ranlib8
-/usr/bin/%{gcc_target}-gcc-nm8
-/usr/bin/%{gcc_target}-gcc8
+/usr/bin/%{gcc_target}-gcc-ar-8
+/usr/bin/%{gcc_target}-gcc-ranlib-8
+/usr/bin/%{gcc_target}-gcc-nm-8
+/usr/bin/%{gcc_target}-gcc-8
 
 /usr/bin/%{gcc_target}-gcc-8
-/usr/bin/gcc8
-/usr/bin/gcc-ar8
-/usr/bin/gcc-nm8
-/usr/bin/gcc-ranlib8
-/usr/bin/gcov8
-/usr/bin/gcov-tool8
-/usr/bin/cpp8
+/usr/bin/gcc-8
+/usr/bin/gcc-ar-8
+/usr/bin/gcc-nm-8
+/usr/bin/gcc-ranlib-8
+/usr/bin/gcov-8
+/usr/bin/gcov-tool-8
+/usr/bin/cpp-8
 #/usr/lib64/libvtv*
 %exclude /usr/lib64/libcc1*
 /usr/lib64/gcc/%{gcc_target}/8/include-fixed/
@@ -339,7 +339,7 @@ rm -f %{buildroot}/usr/lib64/libstdc++.so
 /usr/lib64/gcc/%{gcc_target}/8/plugin/gtype.state
 /usr/lib64/gcc/%{gcc_target}/8/plugin/*.so.*
 /usr/lib64/gcc/%{gcc_target}/8/plugin/include/
-/usr/bin/x86_64-generic-linux-c++8
+/usr/bin/x86_64-generic-linux-c++-8
 
 /usr/share/gcc-8
 %exclude /usr/lib64/*.a
@@ -347,8 +347,8 @@ rm -f %{buildroot}/usr/lib64/libstdc++.so
 
 
 #g++
-/usr/bin/%{gcc_target}-g++8
-/usr/bin/g++8
+/usr/bin/%{gcc_target}-g++-8
+/usr/bin/g++-8
 
 # gcc-dev
 /usr/lib64/gcc/%{gcc_target}/8/liblto_plugin.so
@@ -408,3 +408,4 @@ rm -f %{buildroot}/usr/lib64/libstdc++.so
 %exclude /usr/lib64/libtsan*
 %exclude /usr/lib64/liblsan*
 %exclude /usr/lib64/libsanit*
+%exclude /usr/bin/x86_64-generic-linux-gcc-tmp
