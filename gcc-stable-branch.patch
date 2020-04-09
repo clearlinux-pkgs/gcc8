@@ -10,7 +10,10 @@ Fritz Reese (2):
       Backport form master: Fix fortran/85982 ICE in resolve_component.
       Indicate backport in changelogs from last commit.
 
-GCC Administrator (32):
+GCC Administrator (35):
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -51,11 +54,12 @@ H.J. Lu (2):
 Iain Sandoe (1):
       Darwin: Fix i686 bootstrap when the assembler supports GOTOFF in data.
 
-Jakub Jelinek (4):
+Jakub Jelinek (5):
       Bump BASE-VER to 8.4.1
       maintainer-scripts: Speed up git clone in gcc_release
       gimplify: Don't optimize register const vars to static [PR93949]
       backport: re PR fortran/92775 (Incorrect expression in DW_AT_byte_stride on an array)
+      i386: Fix emit_reduc_half on V{64Q,32H}Imode [PR94500]
 
 Jason Merrill (5):
       c++: Fix CTAD with multiple-arg ctor template [93248].
@@ -97,6 +101,9 @@ Tamar Christina (1):
 Tobias Burnus (1):
       [Fortran] Disable front-end optimization for OpenACC atomic (PR93462)
 
+Will Schmidt (1):
+      rs6000 pragma fix backport from mainline to gcc-8
+
 diff --git a/gcc/BASE-VER b/gcc/BASE-VER
 index a2f28f43be3..6da4de57dc6 100644
 --- a/gcc/BASE-VER
@@ -105,10 +112,24 @@ index a2f28f43be3..6da4de57dc6 100644
 -8.4.0
 +8.4.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 142499c563c..c82e77a6ce9 100644
+index 142499c563c..7d52e3d2ddf 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,139 @@
+@@ -1,3 +1,153 @@
++2020-04-07  Will Schmidt  <will_schmidt@vnet.ibm.com>
++
++	Backport from mainline.
++	2020-03-23  Will Schmidt  <will_schmidt@vnet.ibm.com>
++
++	* config/rs6000/rs6000-call.c altivec_init_builtins(): Remove
++	code to skip defining builtins based on builtin_mask.
++
++2020-04-07  Jakub Jelinek  <jakub@redhat.com>
++
++	PR target/94500
++	* config/i386/i386.c (emit_reduc_half): For V{64QI,32HI}mode
++	handle i < 64 using avx512bw_lshrv4ti3.  Formatting fixes.
++
 +2020-04-03  Martin Jambor  <mjambor@suse.cz>
 +
 +	PR tree-optimization/93435
@@ -330,7 +351,7 @@ index 2d0dc1f2605..3a844a55cd6 100644
  #undef FUNCTION_PROFILER
  #define FUNCTION_PROFILER(FILE, LABELNO)				\
 diff --git a/gcc/config/i386/i386.c b/gcc/config/i386/i386.c
-index 5d2e3945f6e..2fe0c8bc4f8 100644
+index 5d2e3945f6e..13943ebf800 100644
 --- a/gcc/config/i386/i386.c
 +++ b/gcc/config/i386/i386.c
 @@ -19922,8 +19922,6 @@ ix86_output_addr_diff_elt (FILE *file, int value, int rel)
@@ -351,6 +372,87 @@ index 5d2e3945f6e..2fe0c8bc4f8 100644
    else
      asm_fprintf (file, ASM_LONG "%U%s+[.-%s%d]\n",
  		 GOT_SYMBOL_NAME, LPREFIX, value);
+@@ -44528,43 +44528,51 @@ emit_reduc_half (rtx dest, rtx src, int i)
+       break;
+     case E_V64QImode:
+     case E_V32HImode:
++      if (i < 64)
++	{
++	  d = gen_reg_rtx (V4TImode);
++	  tem = gen_avx512bw_lshrv4ti3 (d, gen_lowpart (V4TImode, src),
++					GEN_INT (i / 2));
++	  break;
++	}
++      /* FALLTHRU */
+     case E_V16SImode:
+     case E_V16SFmode:
+     case E_V8DImode:
+     case E_V8DFmode:
+       if (i > 128)
+ 	tem = gen_avx512f_shuf_i32x4_1 (gen_lowpart (V16SImode, dest),
+-				      gen_lowpart (V16SImode, src),
+-				      gen_lowpart (V16SImode, src),
+-				      GEN_INT (0x4 + (i == 512 ? 4 : 0)),
+-				      GEN_INT (0x5 + (i == 512 ? 4 : 0)),
+-				      GEN_INT (0x6 + (i == 512 ? 4 : 0)),
+-				      GEN_INT (0x7 + (i == 512 ? 4 : 0)),
+-				      GEN_INT (0xC), GEN_INT (0xD),
+-				      GEN_INT (0xE), GEN_INT (0xF),
+-				      GEN_INT (0x10), GEN_INT (0x11),
+-				      GEN_INT (0x12), GEN_INT (0x13),
+-				      GEN_INT (0x14), GEN_INT (0x15),
+-				      GEN_INT (0x16), GEN_INT (0x17));
++					gen_lowpart (V16SImode, src),
++					gen_lowpart (V16SImode, src),
++					GEN_INT (0x4 + (i == 512 ? 4 : 0)),
++					GEN_INT (0x5 + (i == 512 ? 4 : 0)),
++					GEN_INT (0x6 + (i == 512 ? 4 : 0)),
++					GEN_INT (0x7 + (i == 512 ? 4 : 0)),
++					GEN_INT (0xC), GEN_INT (0xD),
++					GEN_INT (0xE), GEN_INT (0xF),
++					GEN_INT (0x10), GEN_INT (0x11),
++					GEN_INT (0x12), GEN_INT (0x13),
++					GEN_INT (0x14), GEN_INT (0x15),
++					GEN_INT (0x16), GEN_INT (0x17));
+       else
+ 	tem = gen_avx512f_pshufd_1 (gen_lowpart (V16SImode, dest),
+-				   gen_lowpart (V16SImode, src),
+-				   GEN_INT (i == 128 ? 0x2 : 0x1),
+-				   GEN_INT (0x3),
+-				   GEN_INT (0x3),
+-				   GEN_INT (0x3),
+-				   GEN_INT (i == 128 ? 0x6 : 0x5),
+-				   GEN_INT (0x7),
+-				   GEN_INT (0x7),
+-				   GEN_INT (0x7),
+-				   GEN_INT (i == 128 ? 0xA : 0x9),
+-				   GEN_INT (0xB),
+-				   GEN_INT (0xB),
+-				   GEN_INT (0xB),
+-				   GEN_INT (i == 128 ? 0xE : 0xD),
+-				   GEN_INT (0xF),
+-				   GEN_INT (0xF),
+-				   GEN_INT (0xF));
++				    gen_lowpart (V16SImode, src),
++				    GEN_INT (i == 128 ? 0x2 : 0x1),
++				    GEN_INT (0x3),
++				    GEN_INT (0x3),
++				    GEN_INT (0x3),
++				    GEN_INT (i == 128 ? 0x6 : 0x5),
++				    GEN_INT (0x7),
++				    GEN_INT (0x7),
++				    GEN_INT (0x7),
++				    GEN_INT (i == 128 ? 0xA : 0x9),
++				    GEN_INT (0xB),
++				    GEN_INT (0xB),
++				    GEN_INT (0xB),
++				    GEN_INT (i == 128 ? 0xE : 0xD),
++				    GEN_INT (0xF),
++				    GEN_INT (0xF),
++				    GEN_INT (0xF));
+       break;
+     default:
+       gcc_unreachable ();
 diff --git a/gcc/config/i386/i386.h b/gcc/config/i386/i386.h
 index aba63fb7a80..63a54558a65 100644
 --- a/gcc/config/i386/i386.h
@@ -395,7 +497,7 @@ index 6c5757eadf5..9ae1a354fc5 100644
  #define vec_rsqrte __builtin_vec_rsqrte
  #define vec_signed __builtin_vec_vsigned
 diff --git a/gcc/config/rs6000/rs6000.c b/gcc/config/rs6000/rs6000.c
-index 8cf6bd54b2f..c868015dc9e 100644
+index 8cf6bd54b2f..95643c01b5a 100644
 --- a/gcc/config/rs6000/rs6000.c
 +++ b/gcc/config/rs6000/rs6000.c
 @@ -4401,6 +4401,14 @@ rs6000_option_override_internal (bool global_init_p)
@@ -413,6 +515,64 @@ index 8cf6bd54b2f..c868015dc9e 100644
    if (TARGET_DIRECT_MOVE && !TARGET_VSX)
      {
        if (rs6000_isa_flags_explicit & OPTION_MASK_DIRECT_MOVE)
+@@ -17614,7 +17622,6 @@ altivec_init_builtins (void)
+   size_t i;
+   tree ftype;
+   tree decl;
+-  HOST_WIDE_INT builtin_mask = rs6000_builtin_mask;
+ 
+   tree pvoid_type_node = build_pointer_type (void_type_node);
+ 
+@@ -17976,17 +17983,8 @@ altivec_init_builtins (void)
+   d = bdesc_dst;
+   for (i = 0; i < ARRAY_SIZE (bdesc_dst); i++, d++)
+     {
+-      HOST_WIDE_INT mask = d->mask;
+-
+       /* It is expected that these dst built-in functions may have
+ 	 d->icode equal to CODE_FOR_nothing.  */
+-      if ((mask & builtin_mask) != mask)
+-	{
+-	  if (TARGET_DEBUG_BUILTIN)
+-	    fprintf (stderr, "altivec_init_builtins, skip dst %s\n",
+-		     d->name);
+-	  continue;
+-	}
+       def_builtin (d->name, void_ftype_pcvoid_int_int, d->code);
+     }
+ 
+@@ -17996,15 +17994,6 @@ altivec_init_builtins (void)
+     {
+       machine_mode mode1;
+       tree type;
+-      HOST_WIDE_INT mask = d->mask;
+-
+-      if ((mask & builtin_mask) != mask)
+-	{
+-	  if (TARGET_DEBUG_BUILTIN)
+-	    fprintf (stderr, "altivec_init_builtins, skip predicate %s\n",
+-		     d->name);
+-	  continue;
+-	}
+ 
+       if (rs6000_overloaded_builtin_p (d->code))
+ 	mode1 = VOIDmode;
+@@ -18051,15 +18040,6 @@ altivec_init_builtins (void)
+     {
+       machine_mode mode0;
+       tree type;
+-      HOST_WIDE_INT mask = d->mask;
+-
+-      if ((mask & builtin_mask) != mask)
+-	{
+-	  if (TARGET_DEBUG_BUILTIN)
+-	    fprintf (stderr, "altivec_init_builtins, skip abs %s\n",
+-		     d->name);
+-	  continue;
+-	}
+ 
+       /* Cannot define builtin if the instruction is disabled.  */
+       gcc_assert (d->icode != CODE_FOR_nothing);
 diff --git a/gcc/cp/ChangeLog b/gcc/cp/ChangeLog
 index a525d4f4f9e..d1d829a8bca 100644
 --- a/gcc/cp/ChangeLog
@@ -1098,10 +1258,29 @@ index d9c66d42c26..0aa78a31411 100644
  extern void mark_end_of_function_resources (rtx, bool);
  extern void init_resource_info (rtx_insn *);
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index ab652ddc144..dc0d4118255 100644
+index ab652ddc144..59c802200a9 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,63 @@
+@@ -1,3 +1,82 @@
++2020-04-07  Will Schmidt  <will_schmidt@vnet.ibm.com>
++
++	Backport from mainline.
++	2020-03-23  Will Schmidt  <will_schmidt@vnet.ibm.com>
++
++	* gcc.target/powerpc/pragma_power6.c: New.
++	* gcc.target/powerpc/pragma_power7.c: New.
++	* gcc.target/powerpc/pragma_power8.c: New.
++	* gcc.target/powerpc/pragma_power9.c: New.
++	* gcc.target/powerpc/pragma_misc9.c: New.
++	* gcc.target/powerpc/vsu/pragma_misc9.c: New.
++	* gcc.target/powerpc/vsu/vec-all-nez-7.c: Update.
++	* gcc.target/powerpc/vsu/vec-any-eqz-7.c: Update.
++
++2020-04-07  Jakub Jelinek  <jakub@redhat.com>
++
++	PR target/94500
++	* gcc.target/i386/avx512bw-pr94500.c: New test.
++
 +2020-04-03  Martin Jambor  <mjambor@suse.cz>
 +
 +	PR tree-optimization/93435
@@ -1770,6 +1949,305 @@ index 00000000000..cb8e7495b15
 +  out3[3] = SD->f0.ds21[0].f1[1].f2[2].f3[3].f4[3].f5[3].f6[3].f7[3].f8[3].f9[3]
 +    .f10[3];
 +}
+diff --git a/gcc/testsuite/gcc.target/i386/avx512bw-pr94500.c b/gcc/testsuite/gcc.target/i386/avx512bw-pr94500.c
+new file mode 100644
+index 00000000000..7effdac5a17
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/i386/avx512bw-pr94500.c
+@@ -0,0 +1,28 @@
++/* PR target/94500 */
++/* { dg-do run { target avx512bw } } */
++/* { dg-options "-O3 -mavx512bw -mprefer-vector-width=512" } */
++
++#define AVX512BW
++#include "avx512f-helper.h"
++
++__attribute__((noipa)) signed char
++foo (signed char *p)
++{
++  signed char r = 0;
++  int i;
++  for (i = 0; i < 256; i++)
++    if (p[i] > r) r = p[i];
++  return r;
++}
++
++signed char buf[256];
++
++static void
++TEST (void)
++{
++  int i;
++  for (i = 0; i < 256; i++)
++    buf[i] = i - 128;
++  if (foo (buf) != 127)
++    abort ();
++}
+diff --git a/gcc/testsuite/gcc.target/powerpc/pragma_misc9.c b/gcc/testsuite/gcc.target/powerpc/pragma_misc9.c
+new file mode 100644
+index 00000000000..605c61a0d94
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/powerpc/pragma_misc9.c
+@@ -0,0 +1,47 @@
++/* { dg-do compile } */
++/* { dg-require-effective-target powerpc_p9vector_ok } */
++/* { dg-require-effective-target lp64 } */
++/* { dg-options "-mcpu=power9 -maltivec -O2" } */
++
++/* Ensure that if we set a pragma gcc target for an
++   older processor, we do not compile builtins that
++   the older target does not support.  */
++
++#include <altivec.h>
++
++vector bool int
++test1 (vector signed int a, vector signed int b)
++{
++  return vec_cmpnez (a, b);
++}
++
++#pragma GCC target ("cpu=power8")
++vector bool int
++test2 (vector signed int a, vector signed int b)
++{
++  return vec_cmpnez (a, b);
++  /* { dg-error "'__builtin_altivec_vcmpnezw' requires the '-mcpu=power9' option" "" { target *-*-* } .-1 } */
++}
++
++#pragma GCC target ("cpu=power7")
++vector signed int
++test3 (vector signed int a, vector signed int b)
++{
++  return vec_mergee (a, b);
++  /* { dg-error "'__builtin_altivec_vmrgew_v4si' requires the '-mpower8-vector' option" "" { target *-*-* } .-1 } */
++}
++
++#pragma GCC target ("cpu=power6")
++vector signed int
++test4 (vector int a, vector int b)
++{
++  return vec_sldw (a, b, 2);
++  /* { dg-error "'__builtin_vsx_xxsldwi_4si' requires the '-mvsx' option" "" { target *-*-* } .-1 } */
++}
++
++vector int
++test5 (vector int a, vector int b)
++{
++  return vec_add (a, b);
++}
++
+diff --git a/gcc/testsuite/gcc.target/powerpc/pragma_power6.c b/gcc/testsuite/gcc.target/powerpc/pragma_power6.c
+new file mode 100644
+index 00000000000..7bd13491dd4
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/powerpc/pragma_power6.c
+@@ -0,0 +1,17 @@
++/* { dg-do compile } */
++/* { dg-require-effective-target powerpc_altivec_ok } */
++/* { dg-options "-mcpu=power6 -maltivec -O2" } */
++
++#include <altivec.h>
++
++#pragma GCC target ("cpu=power6,altivec")
++#ifdef _ARCH_PWR6
++vector int
++isa_2_05 (vector int a, vector int b)
++{
++  return vec_add (a, b);
++}
++#else
++#error failed power6 pragma target
++#endif
++
+diff --git a/gcc/testsuite/gcc.target/powerpc/pragma_power7.c b/gcc/testsuite/gcc.target/powerpc/pragma_power7.c
+new file mode 100644
+index 00000000000..06a7793baf6
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/powerpc/pragma_power7.c
+@@ -0,0 +1,32 @@
++/* { dg-do compile } */
++/* { dg-require-effective-target powerpc_altivec_ok } */
++/* { dg-require-effective-target lp64 } */
++/* { dg-options "-mcpu=power6 -maltivec -O2" } */
++
++#include <altivec.h>
++
++#pragma GCC target ("cpu=power6,altivec")
++#ifdef _ARCH_PWR6
++vector int
++test1 (vector int a, vector int b)
++{
++  return vec_add (a, b);
++}
++#else
++#error failed power6 pragma target
++#endif
++
++#pragma GCC target ("cpu=power7")
++/* Force a re-read of altivec.h with new cpu target. */
++#undef _ALTIVEC_H
++#include <altivec.h>
++#ifdef _ARCH_PWR7
++vector signed int
++test2 (vector signed int a, vector signed int b)
++{
++  return vec_sldw (a, b, 3);
++}
++#else
++#error failed to set power7 pragma target
++#endif
++
+diff --git a/gcc/testsuite/gcc.target/powerpc/pragma_power8.c b/gcc/testsuite/gcc.target/powerpc/pragma_power8.c
+new file mode 100644
+index 00000000000..1922890bdbb
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/powerpc/pragma_power8.c
+@@ -0,0 +1,52 @@
++/* { dg-do compile } */
++/* { dg-require-effective-target lp64 } */
++/* { dg-require-effective-target powerpc_p8vector_ok } */
++/* { dg-options "-mcpu=power6 -maltivec -O2" } */
++
++#include <altivec.h>
++
++#pragma GCC target ("cpu=power6,altivec")
++#ifdef _ARCH_PWR6
++vector int
++test1 (vector int a, vector int b)
++{
++  return vec_add (a, b);
++}
++#else
++#error failed power6 pragma target
++#endif
++
++#pragma GCC target ("cpu=power7")
++/* Force a re-read of altivec.h with new cpu target. */
++#undef _ALTIVEC_H
++#include <altivec.h>
++#ifdef _ARCH_PWR7
++vector signed int
++test2 (vector signed int a, vector signed int b)
++{
++  return vec_sldw (a, b, 3);
++}
++#else
++#error failed to set power7 pragma target
++#endif
++
++#pragma GCC target ("cpu=power8")
++/* Force a re-read of altivec.h with new cpu target. */
++#undef _ALTIVEC_H
++#include <altivec.h>
++#ifdef _ARCH_PWR8
++vector int
++test3 (vector int a, vector int b)
++{
++  return vec_mergee (a, b);
++}
++typedef __attribute__((altivec(vector__))) long vec_t;
++int
++test3b (vec_t a, vec_t b)
++{
++  return __builtin_vec_vcmpeq_p (2, a, b);
++}
++#else
++#error failed to set power8 pragma target.
++#endif
++
+diff --git a/gcc/testsuite/gcc.target/powerpc/pragma_power9.c b/gcc/testsuite/gcc.target/powerpc/pragma_power9.c
+new file mode 100644
+index 00000000000..1b14ee5ec3b
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/powerpc/pragma_power9.c
+@@ -0,0 +1,63 @@
++/* { dg-do compile } */
++/* { dg-require-effective-target powerpc_altivec_ok } */
++/* { dg-require-effective-target lp64 } */
++/* { dg-options "-mcpu=power6 -maltivec -O2" } */
++
++#include <altivec.h>
++
++#ifdef _ARCH_PWR6
++vector int
++test1 (vector int a, vector int b)
++{
++  return vec_add (a, b);
++}
++#else
++#error failed on default power6 pragma target
++#endif
++
++#pragma GCC target ("cpu=power7")
++#undef _ALTIVEC_H
++#include <altivec.h>
++#ifdef _ARCH_PWR7
++vector signed int
++test2 (vector signed int a, vector signed int b)
++{
++  return vec_sldw (a, b, 3);
++}
++#else
++#error failed to set power7 pragma target
++#endif
++
++#pragma GCC target ("cpu=power8")
++#undef _ALTIVEC_H
++#include <altivec.h>
++#ifdef _ARCH_PWR8
++vector int
++test3 (vector int a, vector int b)
++{
++  return vec_mergee (a, b);
++}
++
++typedef __attribute__((altivec(vector__))) long vec_t;
++int
++test3b (vec_t a, vec_t b)
++{
++  return __builtin_vec_vcmpeq_p (2, a, b);
++}
++#else
++#error failed to set power8 pragma target.
++#endif
++
++#pragma GCC target ("cpu=power9,power9-vector")
++#undef _ALTIVEC_H
++#include <altivec.h>
++#ifdef _ARCH_PWR9
++vector bool int
++test4 (vector signed int a, vector signed int b)
++{
++  return vec_cmpnez (a, b);
++}
++#else
++#error Failed to set cpu=power9 pragma target.
++#endif
++
+diff --git a/gcc/testsuite/gcc.target/powerpc/vsu/vec-all-nez-7.c b/gcc/testsuite/gcc.target/powerpc/vsu/vec-all-nez-7.c
+index 0628a85aefe..06b27e66f11 100644
+--- a/gcc/testsuite/gcc.target/powerpc/vsu/vec-all-nez-7.c
++++ b/gcc/testsuite/gcc.target/powerpc/vsu/vec-all-nez-7.c
+@@ -12,5 +12,6 @@ test_all_not_equal_and_not_zero (vector unsigned short *arg1_p,
+   vector unsigned short arg_1 = *arg1_p;
+   vector unsigned short arg_2 = *arg2_p;
+ 
+-  return __builtin_vec_vcmpnez_p (__CR6_LT, arg_1, arg_2);	/* { dg-error "builtin function '__builtin_vec_vcmpnez_p' not supported in this compiler configuration" } */
++  return __builtin_vec_vcmpnez_p (__CR6_LT, arg_1, arg_2);
++  /* { dg-error "'__builtin_altivec_vcmpnezh_p' requires the '-mcpu=power9' option" "" { target *-*-* } .-1 } */
+ }
+diff --git a/gcc/testsuite/gcc.target/powerpc/vsu/vec-any-eqz-7.c b/gcc/testsuite/gcc.target/powerpc/vsu/vec-any-eqz-7.c
+index f81ad21a205..983d33dd3f1 100644
+--- a/gcc/testsuite/gcc.target/powerpc/vsu/vec-any-eqz-7.c
++++ b/gcc/testsuite/gcc.target/powerpc/vsu/vec-any-eqz-7.c
+@@ -11,5 +11,6 @@ test_any_equal (vector unsigned int *arg1_p, vector unsigned int *arg2_p)
+   vector unsigned int arg_1 = *arg1_p;
+   vector unsigned int arg_2 = *arg2_p;
+ 
+-  return __builtin_vec_vcmpnez_p (__CR6_LT_REV, arg_1, arg_2);	/* { dg-error "builtin function '__builtin_vec_vcmpnez_p' not supported in this compiler configuration" } */
++  return __builtin_vec_vcmpnez_p (__CR6_LT_REV, arg_1, arg_2);
++  /* { dg-error "'__builtin_altivec_vcmpnezw_p' requires the '-mcpu=power9' option" "" { target *-*-* } .-1 } */
+ }
 diff --git a/gcc/testsuite/gfortran.dg/dec_structure_28.f90 b/gcc/testsuite/gfortran.dg/dec_structure_28.f90
 new file mode 100644
 index 00000000000..bab08b2d5c3
