@@ -10,7 +10,10 @@ Fritz Reese (2):
       Backport form master: Fix fortran/85982 ICE in resolve_component.
       Indicate backport in changelogs from last commit.
 
-GCC Administrator (40):
+GCC Administrator (43):
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -91,6 +94,10 @@ Martin Liska (2):
       Backport 9297e013293e4d332fc7c40859ea4dd9616e0d88
       Backport 55a7380213a5c16120d5c674fb42b38a3d796b57
 
+Max Filippov (2):
+      xtensa: backport fix for PR target/91880
+      xtensa: backport fix for PR target/94584
+
 Nathan Sidwell (1):
       c++: Fix ICE on popping local scope [pr84733]
 
@@ -109,6 +116,9 @@ Thomas König (1):
 Tobias Burnus (1):
       [Fortran] Disable front-end optimization for OpenACC atomic (PR93462)
 
+Uros Bizjak (1):
+      i386: Require OPTION_MASK_ISA_SSE2 for __builtin_ia32_movq128 [PR94603]
+
 Will Schmidt (1):
       rs6000 pragma fix backport from mainline to gcc-8
 
@@ -120,10 +130,34 @@ index a2f28f43be3..6da4de57dc6 100644
 -8.4.0
 +8.4.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 142499c563c..7d52e3d2ddf 100644
+index 142499c563c..4cf6f64b017 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,153 @@
+@@ -1,3 +1,177 @@
++2020-04-15  Uroš Bizjak  <ubizjak@gmail.com>
++
++	PR target/94603
++	* config/i386/i386-builtin.def (__builtin_ia32_movq128):
++	Require OPTION_MASK_ISA_SSE2.
++
++2020-04-15  Max Filippov  <jcmvbkbc@gmail.com>
++
++	Backport from mainline.
++	2020-04-14  Max Filippov  <jcmvbkbc@gmail.com>
++
++	PR target/94584
++	* config/xtensa/xtensa.md (zero_extendhisi2, zero_extendqisi2)
++	(extendhisi2_internal): Add %v1 before the load instructions.
++
++2020-04-15  Max Filippov  <jcmvbkbc@gmail.com>
++
++	Backport from mainline.
++	2019-09-26  Max Filippov  <jcmvbkbc@gmail.com>
++
++	* config/xtensa/xtensa.c (hwloop_optimize): Insert zero overhead
++	loop instruction into new basic block before the loop when basic
++	block that precedes the loop is empty.
++
 +2020-04-07  Will Schmidt  <will_schmidt@vnet.ibm.com>
 +
 +	Backport from mainline.
@@ -358,6 +392,19 @@ index 2d0dc1f2605..3a844a55cd6 100644
  /* Darwin profiling -- call mcount.  */
  #undef FUNCTION_PROFILER
  #define FUNCTION_PROFILER(FILE, LABELNO)				\
+diff --git a/gcc/config/i386/i386-builtin.def b/gcc/config/i386/i386-builtin.def
+index fe23ab0b829..35bd8add04a 100644
+--- a/gcc/config/i386/i386-builtin.def
++++ b/gcc/config/i386/i386-builtin.def
+@@ -787,7 +787,7 @@ BDESC (OPTION_MASK_ISA_SSE2, CODE_FOR_sse2_pshufhw, "__builtin_ia32_pshufhw", IX
+ 
+ BDESC (OPTION_MASK_ISA_SSE2, CODE_FOR_sse2_vmsqrtv2df2, "__builtin_ia32_sqrtsd", IX86_BUILTIN_SQRTSD, UNKNOWN, (int) V2DF_FTYPE_V2DF_VEC_MERGE)
+ 
+-BDESC (OPTION_MASK_ISA_SSE, CODE_FOR_sse2_movq128, "__builtin_ia32_movq128", IX86_BUILTIN_MOVQ128, UNKNOWN, (int) V2DI_FTYPE_V2DI)
++BDESC (OPTION_MASK_ISA_SSE2, CODE_FOR_sse2_movq128, "__builtin_ia32_movq128", IX86_BUILTIN_MOVQ128, UNKNOWN, (int) V2DI_FTYPE_V2DI)
+ 
+ /* SSE2 MMX */
+ BDESC (OPTION_MASK_ISA_SSE2 | OPTION_MASK_ISA_MMX, CODE_FOR_mmx_addv1di3, "__builtin_ia32_paddq", IX86_BUILTIN_PADDQ, UNKNOWN, (int) V1DI_FTYPE_V1DI_V1DI)
 diff --git a/gcc/config/i386/i386.c b/gcc/config/i386/i386.c
 index 5d2e3945f6e..13943ebf800 100644
 --- a/gcc/config/i386/i386.c
@@ -581,6 +628,60 @@ index 8cf6bd54b2f..95643c01b5a 100644
  
        /* Cannot define builtin if the instruction is disabled.  */
        gcc_assert (d->icode != CODE_FOR_nothing);
+diff --git a/gcc/config/xtensa/xtensa.c b/gcc/config/xtensa/xtensa.c
+index 08f9f7c7a8f..de206527810 100644
+--- a/gcc/config/xtensa/xtensa.c
++++ b/gcc/config/xtensa/xtensa.c
+@@ -4232,7 +4232,9 @@ hwloop_optimize (hwloop_info loop)
+ 
+   seq = get_insns ();
+ 
+-  if (!single_succ_p (entry_bb) || vec_safe_length (loop->incoming) > 1)
++  entry_after = BB_END (entry_bb);
++  if (!single_succ_p (entry_bb) || vec_safe_length (loop->incoming) > 1
++      || !entry_after)
+     {
+       basic_block new_bb;
+       edge e;
+@@ -4253,7 +4255,6 @@ hwloop_optimize (hwloop_info loop)
+     }
+   else
+     {
+-      entry_after = BB_END (entry_bb);
+       while (DEBUG_INSN_P (entry_after)
+              || (NOTE_P (entry_after)
+ 		 && NOTE_KIND (entry_after) != NOTE_INSN_BASIC_BLOCK))
+diff --git a/gcc/config/xtensa/xtensa.md b/gcc/config/xtensa/xtensa.md
+index 209f839cfb0..9b911e30900 100644
+--- a/gcc/config/xtensa/xtensa.md
++++ b/gcc/config/xtensa/xtensa.md
+@@ -538,7 +538,7 @@
+   ""
+   "@
+    extui\t%0, %1, 0, 16
+-   l16ui\t%0, %1"
++   %v1l16ui\t%0, %1"
+   [(set_attr "type"	"arith,load")
+    (set_attr "mode"	"SI")
+    (set_attr "length"	"3,3")])
+@@ -549,7 +549,7 @@
+   ""
+   "@
+    extui\t%0, %1, 0, 8
+-   l8ui\t%0, %1"
++   %v1l8ui\t%0, %1"
+   [(set_attr "type"	"arith,load")
+    (set_attr "mode"	"SI")
+    (set_attr "length"	"3,3")])
+@@ -575,7 +575,7 @@
+   ""
+   "@
+    sext\t%0, %1, 15
+-   l16si\t%0, %1"
++   %v1l16si\t%0, %1"
+   [(set_attr "type"	"arith,load")
+    (set_attr "mode"	"SI")
+    (set_attr "length"	"3,3")])
 diff --git a/gcc/cp/ChangeLog b/gcc/cp/ChangeLog
 index a525d4f4f9e..d1d829a8bca 100644
 --- a/gcc/cp/ChangeLog
@@ -1286,10 +1387,31 @@ index d9c66d42c26..0aa78a31411 100644
  extern void mark_end_of_function_resources (rtx, bool);
  extern void init_resource_info (rtx_insn *);
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index ab652ddc144..5062d974b97 100644
+index ab652ddc144..7e60625fdc7 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,88 @@
+@@ -1,3 +1,109 @@
++2020-04-15  Uroš Bizjak  <ubizjak@gmail.com>
++
++	PR target/94603
++	* gcc.target/i386/pr94603.c: New test.
++
++2020-04-15  Max Filippov  <jcmvbkbc@gmail.com>
++
++	Backport from mainline.
++	2020-04-13  Max Filippov  <jcmvbkbc@gmail.com>
++
++	PR target/94584
++	* gcc.target/xtensa/pr94584.c: New test.
++
++2020-04-15  Max Filippov  <jcmvbkbc@gmail.com>
++
++	Backport from mainline.
++	2019-09-26  Max Filippov  <jcmvbkbc@gmail.com>
++
++	* gcc.target/xtensa/pr91880.c: New test case.
++	* gcc.target/xtensa/xtensa.exp: New test suite.
++
 +2020-04-14  Thomas Koenig  <tkoenig@gcc.gnu.org>
 +
 +	Backport from trunk
@@ -2017,6 +2139,23 @@ index 00000000000..7effdac5a17
 +  if (foo (buf) != 127)
 +    abort ();
 +}
+diff --git a/gcc/testsuite/gcc.target/i386/pr94603.c b/gcc/testsuite/gcc.target/i386/pr94603.c
+new file mode 100644
+index 00000000000..34a1e069eac
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/i386/pr94603.c
+@@ -0,0 +1,11 @@
++/* PR target/94603 */
++/* { dg-do compile } */
++/* { dg-options "-Wno-implicit-function-declaration -msse -mno-sse2" } */
++
++typedef long long __attribute__ ((__vector_size__ (16))) V;
++
++V
++foo (V v)
++{
++  return __builtin_ia32_movq128 (v);  /* { dg-error "" } */
++}
 diff --git a/gcc/testsuite/gcc.target/powerpc/pragma_misc9.c b/gcc/testsuite/gcc.target/powerpc/pragma_misc9.c
 new file mode 100644
 index 00000000000..605c61a0d94
@@ -2282,6 +2421,99 @@ index f81ad21a205..983d33dd3f1 100644
 +  return __builtin_vec_vcmpnez_p (__CR6_LT_REV, arg_1, arg_2);
 +  /* { dg-error "'__builtin_altivec_vcmpnezw_p' requires the '-mcpu=power9' option" "" { target *-*-* } .-1 } */
  }
+diff --git a/gcc/testsuite/gcc.target/xtensa/pr91880.c b/gcc/testsuite/gcc.target/xtensa/pr91880.c
+new file mode 100644
+index 00000000000..f4895a1bb8e
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/xtensa/pr91880.c
+@@ -0,0 +1,10 @@
++/* { dg-do compile } */
++/* { dg-options "-O3 -fomit-frame-pointer -fno-tree-vectorize" } */
++
++void foo (unsigned int n, char *a, char *b)
++{
++  int i;
++
++  for (i = 0; i <= n - 1; ++i)
++    a[i] = b[i];
++}
+diff --git a/gcc/testsuite/gcc.target/xtensa/pr94584.c b/gcc/testsuite/gcc.target/xtensa/pr94584.c
+new file mode 100644
+index 00000000000..1577285b8a6
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/xtensa/pr94584.c
+@@ -0,0 +1,24 @@
++/* { dg-do compile } */
++/* { dg-options "-O2 -mserialize-volatile" } */
++
++unsigned long load32 (volatile unsigned long *s)
++{
++  return *s;
++}
++
++short load16s (volatile short *s)
++{
++  return *s;
++}
++
++unsigned short load16u (volatile unsigned short *s)
++{
++  return *s;
++}
++
++unsigned char load8 (volatile unsigned char *s)
++{
++  return *s;
++}
++
++/* { dg-final { scan-assembler-times "memw" 4 } } */
+diff --git a/gcc/testsuite/gcc.target/xtensa/xtensa.exp b/gcc/testsuite/gcc.target/xtensa/xtensa.exp
+new file mode 100644
+index 00000000000..8720327f526
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/xtensa/xtensa.exp
+@@ -0,0 +1,41 @@
++# Copyright (C) 2019 Free Software Foundation, Inc.
++
++# This program is free software; you can redistribute it and/or modify
++# it under the terms of the GNU General Public License as published by
++# the Free Software Foundation; either version 3 of the License, or
++# (at your option) any later version.
++#
++# This program is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with GCC; see the file COPYING3.  If not see
++# <http://www.gnu.org/licenses/>.
++
++# GCC testsuite that uses the `dg.exp' driver.
++
++# Exit immediately if this isn't an Xtensa target.
++if ![istarget xtensa*-*-*] then {
++  return
++}
++
++# Load support procs.
++load_lib gcc-dg.exp
++
++# If a testcase doesn't have special options, use these.
++global DEFAULT_CFLAGS
++if ![info exists DEFAULT_CFLAGS] then {
++    set DEFAULT_CFLAGS " -ansi -pedantic-errors"
++}
++
++# Initialize `dg'.
++dg-init
++
++# Main loop.
++dg-runtest [lsort [glob -nocomplain $srcdir/$subdir/*.\[cS\]]] \
++	"" $DEFAULT_CFLAGS
++
++# All done.
++dg-finish
 diff --git a/gcc/testsuite/gfortran.dg/dec_structure_28.f90 b/gcc/testsuite/gfortran.dg/dec_structure_28.f90
 new file mode 100644
 index 00000000000..bab08b2d5c3
