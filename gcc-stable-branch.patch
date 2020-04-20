@@ -10,7 +10,10 @@ Fritz Reese (2):
       Backport form master: Fix fortran/85982 ICE in resolve_component.
       Indicate backport in changelogs from last commit.
 
-GCC Administrator (43):
+GCC Administrator (46):
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -55,10 +58,11 @@ GCC Administrator (43):
       Daily bump.
       Daily bump.
 
-H.J. Lu (3):
+H.J. Lu (4):
       i386: Properly pop restore token in signal frame
       lto: Also copy .note.gnu.property section
       x86: Insert ENDBR if function will be called indirectly
+      x86: Restore the frame pointer in word_mode
 
 Iain Sandoe (1):
       Darwin: Fix i686 bootstrap when the assembler supports GOTOFF in data.
@@ -108,8 +112,9 @@ Richard Biener (1):
 Richard Earnshaw (1):
       arm: correct constraints on movsi_compare0 [PR91913]
 
-Tamar Christina (1):
+Tamar Christina (2):
       AArch64: Break apart paradoxical subregs for VSTRUCT writes (PR target/94052)
+      AArch64: Fix options canonicanization for assembler
 
 Thomas König (1):
       Backport from trunk of the fix for PR 94270.
@@ -117,8 +122,9 @@ Thomas König (1):
 Tobias Burnus (1):
       [Fortran] Disable front-end optimization for OpenACC atomic (PR93462)
 
-Uros Bizjak (1):
+Uros Bizjak (2):
       i386: Require OPTION_MASK_ISA_SSE2 for __builtin_ia32_movq128 [PR94603]
+      i386: Remove unneeded assignments when triggering SSE exceptions
 
 Will Schmidt (1):
       rs6000 pragma fix backport from mainline to gcc-8
@@ -131,10 +137,28 @@ index a2f28f43be3..6da4de57dc6 100644
 -8.4.0
 +8.4.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 142499c563c..c758e9a40c7 100644
+index 142499c563c..a14aaec61db 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,186 @@
+@@ -1,3 +1,204 @@
++2020-04-20  H.J. Lu  <hongjiu.lu@intel.com>
++
++	Backport from master
++	2020-04-13  H.J. Lu  <hongjiu.lu@intel.com>
++
++	PR target/94556
++	* config/i386/i386.c (ix86_expand_epilogue): Restore the frame
++	pointer in word_mode for eh_return epilogues.
++
++2020-04-20  Tamar Christina  <tamar.christina@arm.com>
++
++	Backport from mainline.
++	2020-04-03  Tamar Christina  <tamar.christina@arm.com>
++
++	PR target/94396
++	* common/config/aarch64/aarch64-common.c
++	(aarch64_get_extension_string_for_isa_flags): Handle default flags.
++
 +2020-04-17  H.J. Lu  <hongjiu.lu@intel.com>
 +
 +	Backport from master
@@ -321,6 +345,34 @@ index 142499c563c..c758e9a40c7 100644
  2020-03-04  Release Manager
  
  	* GCC 8.4.0 released.
+diff --git a/gcc/common/config/aarch64/aarch64-common.c b/gcc/common/config/aarch64/aarch64-common.c
+index 4bd61e8be1f..d500ae53cc0 100644
+--- a/gcc/common/config/aarch64/aarch64-common.c
++++ b/gcc/common/config/aarch64/aarch64-common.c
+@@ -367,7 +367,22 @@ aarch64_get_extension_string_for_isa_flags (unsigned long isa_flags,
+ 	/* We remove all the dependent bits, to prevent them from being turned
+ 	   on twice.  This only works because we assume that all there are
+ 	   individual options to set all bits standalone.  */
+-	isa_flag_bits &= ~opt->flags_on;
++
++	/* PR target/94396.
++
++	   For flags which would already imply a bit that's on by default (e.g
++	   fp16fml which implies +fp,+fp16) we must emit the flags that are not
++	   on by default.  i.e. in Armv8.4-a +fp16fml is default if +fp16.  So
++	   if a user passes armv8.4-a+fp16 (or +fp16fml) then we need to emit
++	   +fp16.  But if +fp16fml is used in an architecture where it is
++	   completely optional we only have to emit the canonical flag.  */
++	uint64_t toggle_bits = opt->flags_on & default_arch_flags;
++	/* Now check to see if the canonical flag is on by default.  If it
++	   is not then enabling it will enable all bits in flags_on.  */
++	if ((opt->flag_canonical & default_arch_flags) == 0)
++	  toggle_bits = opt->flags_on;
++
++	isa_flag_bits &= ~toggle_bits;
+ 	isa_flag_bits |= opt->flag_canonical;
+       }
+     }
 diff --git a/gcc/config/aarch64/aarch64-simd.md b/gcc/config/aarch64/aarch64-simd.md
 index 1154fc3d58d..da664fc5d29 100644
 --- a/gcc/config/aarch64/aarch64-simd.md
@@ -416,7 +468,7 @@ index fe23ab0b829..35bd8add04a 100644
  /* SSE2 MMX */
  BDESC (OPTION_MASK_ISA_SSE2 | OPTION_MASK_ISA_MMX, CODE_FOR_mmx_addv1di3, "__builtin_ia32_paddq", IX86_BUILTIN_PADDQ, UNKNOWN, (int) V1DI_FTYPE_V1DI_V1DI)
 diff --git a/gcc/config/i386/i386.c b/gcc/config/i386/i386.c
-index 5d2e3945f6e..89a38f25470 100644
+index 5d2e3945f6e..f1baecda28e 100644
 --- a/gcc/config/i386/i386.c
 +++ b/gcc/config/i386/i386.c
 @@ -2498,7 +2498,12 @@ rest_of_insert_endbranch (void)
@@ -433,7 +485,32 @@ index 5d2e3945f6e..89a38f25470 100644
      {
        /* Queue ENDBR insertion to x86_function_profiler.  */
        if (crtl->profile && flag_fentry)
-@@ -19922,8 +19927,6 @@ ix86_output_addr_diff_elt (FILE *file, int value, int rel)
+@@ -14596,8 +14601,13 @@ ix86_expand_epilogue (int style)
+ 	      t = plus_constant (Pmode, t, m->fs.fp_offset - UNITS_PER_WORD);
+ 	      emit_insn (gen_rtx_SET (sa, t));
+ 
+-	      t = gen_frame_mem (Pmode, hard_frame_pointer_rtx);
+-	      insn = emit_move_insn (hard_frame_pointer_rtx, t);
++	      /* NB: eh_return epilogues must restore the frame pointer
++		 in word_mode since the upper 32 bits of RBP register
++		 can have any values.  */
++	      t = gen_frame_mem (word_mode, hard_frame_pointer_rtx);
++	      rtx frame_reg = gen_rtx_REG (word_mode,
++					   HARD_FRAME_POINTER_REGNUM);
++	      insn = emit_move_insn (frame_reg, t);
+ 
+ 	      /* Note that we use SA as a temporary CFA, as the return
+ 		 address is at the proper place relative to it.  We
+@@ -14612,7 +14622,7 @@ ix86_expand_epilogue (int style)
+ 	      add_reg_note (insn, REG_CFA_DEF_CFA,
+ 			    plus_constant (Pmode, sa, UNITS_PER_WORD));
+ 	      ix86_add_queued_cfa_restore_notes (insn);
+-	      add_reg_note (insn, REG_CFA_RESTORE, hard_frame_pointer_rtx);
++	      add_reg_note (insn, REG_CFA_RESTORE, frame_reg);
+ 	      RTX_FRAME_RELATED_P (insn) = 1;
+ 
+ 	      m->fs.cfa_reg = sa;
+@@ -19922,8 +19932,6 @@ ix86_output_addr_diff_elt (FILE *file, int value, int rel)
    if (TARGET_64BIT || TARGET_VXWORKS_RTP)
      fprintf (file, "%s%s%d-%s%d\n",
  	     directive, LPREFIX, value, LPREFIX, rel);
@@ -442,7 +519,7 @@ index 5d2e3945f6e..89a38f25470 100644
  #if TARGET_MACHO
    else if (TARGET_MACHO)
      {
-@@ -19932,6 +19935,8 @@ ix86_output_addr_diff_elt (FILE *file, int value, int rel)
+@@ -19932,6 +19940,8 @@ ix86_output_addr_diff_elt (FILE *file, int value, int rel)
        putc ('\n', file);
      }
  #endif
@@ -451,7 +528,7 @@ index 5d2e3945f6e..89a38f25470 100644
    else
      asm_fprintf (file, ASM_LONG "%U%s+[.-%s%d]\n",
  		 GOT_SYMBOL_NAME, LPREFIX, value);
-@@ -44528,43 +44533,51 @@ emit_reduc_half (rtx dest, rtx src, int i)
+@@ -44528,43 +44538,51 @@ emit_reduc_half (rtx dest, rtx src, int i)
        break;
      case E_V64QImode:
      case E_V32HImode:
@@ -1411,10 +1488,33 @@ index d9c66d42c26..0aa78a31411 100644
  extern void mark_end_of_function_resources (rtx, bool);
  extern void init_resource_info (rtx_insn *);
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index ab652ddc144..939aceed460 100644
+index ab652ddc144..874df4046a3 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,119 @@
+@@ -1,3 +1,142 @@
++2020-04-20  Tamar Christina  <tamar.christina@arm.com>
++
++	Backport from mainline.
++	2020-04-03  Tamar Christina  <tamar.christina@arm.com>
++
++	PR target/94396
++	* gcc.target/aarch64/options_set_11.c: New test.
++	* gcc.target/aarch64/options_set_12.c: New test.
++	* gcc.target/aarch64/options_set_13.c: New test.
++	* gcc.target/aarch64/options_set_14.c: New test.
++	* gcc.target/aarch64/options_set_15.c: New test.
++	* gcc.target/aarch64/options_set_16.c: New test.
++	* gcc.target/aarch64/options_set_17.c: New test.
++	* gcc.target/aarch64/options_set_18.c: New test.
++	* gcc.target/aarch64/options_set_19.c: New test.
++	* gcc.target/aarch64/options_set_20.c: New test.
++	* gcc.target/aarch64/options_set_21.c: New test.
++	* gcc.target/aarch64/options_set_22.c: New test.
++	* gcc.target/aarch64/options_set_23.c: New test.
++	* gcc.target/aarch64/options_set_24.c: New test.
++	* gcc.target/aarch64/options_set_25.c: New test.
++	* gcc.target/aarch64/options_set_26.c: New test.
++
 +2020-04-17  H.J. Lu  <hongjiu.lu@intel.com>
 +
 +	Backport from master
@@ -2139,6 +2239,278 @@ index 00000000000..cb8e7495b15
 +  out3[3] = SD->f0.ds21[0].f1[1].f2[2].f3[3].f4[3].f5[3].f6[3].f7[3].f8[3].f9[3]
 +    .f10[3];
 +}
+diff --git a/gcc/testsuite/gcc.target/aarch64/options_set_11.c b/gcc/testsuite/gcc.target/aarch64/options_set_11.c
+new file mode 100644
+index 00000000000..d083bfdbd5c
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/aarch64/options_set_11.c
+@@ -0,0 +1,11 @@
++/* { dg-do compile } */
++/* { dg-additional-options "-march=armv8.2-a+fp" } */
++
++int main ()
++{
++  return 0;
++}
++
++/* { dg-final { scan-assembler {\.arch armv8\.2-a\+crc} } } */
++
++ /* FP is default on, no need to pass on to assembler.  */
+diff --git a/gcc/testsuite/gcc.target/aarch64/options_set_12.c b/gcc/testsuite/gcc.target/aarch64/options_set_12.c
+new file mode 100644
+index 00000000000..58a09fda2c1
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/aarch64/options_set_12.c
+@@ -0,0 +1,11 @@
++/* { dg-do compile } */
++/* { dg-additional-options "-march=armv8.2-a+fp16" } */
++
++int main ()
++{
++  return 0;
++}
++
++/* { dg-final { scan-assembler {\.arch armv8\.2-a\+crc\+fp16} } } */
++
++ /* fp16 not default, should be emitted.  */
+diff --git a/gcc/testsuite/gcc.target/aarch64/options_set_13.c b/gcc/testsuite/gcc.target/aarch64/options_set_13.c
+new file mode 100644
+index 00000000000..2a517ecb58f
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/aarch64/options_set_13.c
+@@ -0,0 +1,11 @@
++/* { dg-do compile } */
++/* { dg-additional-options "-march=armv8.2-a+fp16+fp" } */
++
++int main ()
++{
++  return 0;
++}
++
++/* { dg-final { scan-assembler {\.arch armv8\.2-a\+crc\+fp16} } } */
++
++ /* FP is part of FP16, don't emit it.  */
+diff --git a/gcc/testsuite/gcc.target/aarch64/options_set_14.c b/gcc/testsuite/gcc.target/aarch64/options_set_14.c
+new file mode 100644
+index 00000000000..c192bf6cb63
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/aarch64/options_set_14.c
+@@ -0,0 +1,11 @@
++/* { dg-do compile } */
++/* { dg-additional-options "-march=armv8.2-a+fp16fml" } */
++
++int main ()
++{
++  return 0;
++}
++
++/* { dg-final { scan-assembler {\.arch armv8\.2-a\+crc\+fp16fml} } } */
++
++ /* fmp16fml is smallest option to emit.  */
+diff --git a/gcc/testsuite/gcc.target/aarch64/options_set_15.c b/gcc/testsuite/gcc.target/aarch64/options_set_15.c
+new file mode 100644
+index 00000000000..32ec3ea4643
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/aarch64/options_set_15.c
+@@ -0,0 +1,11 @@
++/* { dg-do compile } */
++/* { dg-additional-options "-march=armv8.2-a+fp16fml+fp" } */
++
++int main ()
++{
++  return 0;
++}
++
++/* { dg-final { scan-assembler {\.arch armv8\.2-a\+crc\+fp16fml*} } } */
++
++ /* fp included in fp16fml, only emit latter.  */
+diff --git a/gcc/testsuite/gcc.target/aarch64/options_set_16.c b/gcc/testsuite/gcc.target/aarch64/options_set_16.c
+new file mode 100644
+index 00000000000..b45c01a915b
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/aarch64/options_set_16.c
+@@ -0,0 +1,11 @@
++/* { dg-do compile } */
++/* { dg-additional-options "-march=armv8.2-a+fp16fml+fp16+fp" } */
++
++int main ()
++{
++  return 0;
++}
++
++/* { dg-final { scan-assembler {\.arch armv8\.2-a\+crc\+fp16fml} } } */
++
++ /* fp16fml is smallest options to emit.  */
+diff --git a/gcc/testsuite/gcc.target/aarch64/options_set_17.c b/gcc/testsuite/gcc.target/aarch64/options_set_17.c
+new file mode 100644
+index 00000000000..c490e1f47a0
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/aarch64/options_set_17.c
+@@ -0,0 +1,11 @@
++/* { dg-do compile } */
++/* { dg-additional-options "-march=armv8.2-a+dotprod" } */
++
++int main ()
++{
++  return 0;
++}
++
++/* { dg-final { scan-assembler {\.arch armv8\.2-a\+crc\+dotprod} } } */
++
++ /* dotprod needs to be emitted pre armv8.4.  */
+diff --git a/gcc/testsuite/gcc.target/aarch64/options_set_18.c b/gcc/testsuite/gcc.target/aarch64/options_set_18.c
+new file mode 100644
+index 00000000000..61587dbbd63
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/aarch64/options_set_18.c
+@@ -0,0 +1,11 @@
++/* { dg-do compile } */
++/* { dg-additional-options "-march=armv8.4-a+dotprod" } */
++
++int main ()
++{
++  return 0;
++}
++
++/* { dg-final { scan-assembler {\.arch armv8\.4-a\+crc} } } */
++
++ /* dotprod is default in armv8.4-a, don't emit.  */
+diff --git a/gcc/testsuite/gcc.target/aarch64/options_set_19.c b/gcc/testsuite/gcc.target/aarch64/options_set_19.c
+new file mode 100644
+index 00000000000..72b58126182
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/aarch64/options_set_19.c
+@@ -0,0 +1,11 @@
++/* { dg-do compile } */
++/* { dg-additional-options "-march=armv8.4-a+fp" } */
++
++int main ()
++{
++  return 0;
++}
++
++/* { dg-final { scan-assembler {\.arch armv8\.4-a\+crc} } } */
++
++ /* fp default, don't emit.  */
+diff --git a/gcc/testsuite/gcc.target/aarch64/options_set_20.c b/gcc/testsuite/gcc.target/aarch64/options_set_20.c
+new file mode 100644
+index 00000000000..b383e0aced2
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/aarch64/options_set_20.c
+@@ -0,0 +1,11 @@
++/* { dg-do compile } */
++/* { dg-additional-options "-march=armv8.4-a+fp16" } */
++
++int main ()
++{
++  return 0;
++}
++
++/* { dg-final { scan-assembler {\.arch armv8\.4-a\+crc\+fp16} } } */
++
++ /* fp16 smallest set to emit.  */
+diff --git a/gcc/testsuite/gcc.target/aarch64/options_set_21.c b/gcc/testsuite/gcc.target/aarch64/options_set_21.c
+new file mode 100644
+index 00000000000..19fcd6fda6e
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/aarch64/options_set_21.c
+@@ -0,0 +1,11 @@
++/* { dg-do compile } */
++/* { dg-additional-options "-march=armv8.4-a+fp16+fp" } */
++
++int main ()
++{
++  return 0;
++}
++
++/* { dg-final { scan-assembler {\.arch armv8\.4-a\+crc\+fp16} } } */
++
++ /* fp16 smallest set to emit.  */
+diff --git a/gcc/testsuite/gcc.target/aarch64/options_set_22.c b/gcc/testsuite/gcc.target/aarch64/options_set_22.c
+new file mode 100644
+index 00000000000..77ae4089f39
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/aarch64/options_set_22.c
+@@ -0,0 +1,11 @@
++/* { dg-do compile } */
++/* { dg-additional-options "-march=armv8.4-a+fp16fml" } */
++
++int main ()
++{
++  return 0;
++}
++
++/* { dg-final { scan-assembler {\.arch armv8\.4-a\+crc\+fp16} } } */
++
++ /* fp16 smallest set to emit.  */
+diff --git a/gcc/testsuite/gcc.target/aarch64/options_set_23.c b/gcc/testsuite/gcc.target/aarch64/options_set_23.c
+new file mode 100644
+index 00000000000..dee637c5d2c
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/aarch64/options_set_23.c
+@@ -0,0 +1,11 @@
++/* { dg-do compile } */
++/* { dg-additional-options "-march=armv8.4-a+fp16fml+fp" } */
++
++int main ()
++{
++  return 0;
++}
++
++/* { dg-final { scan-assembler {\.arch armv8\.4-a\+crc\+fp16} } } */
++
++ /* fp16 smallest set to emit.  */
+diff --git a/gcc/testsuite/gcc.target/aarch64/options_set_24.c b/gcc/testsuite/gcc.target/aarch64/options_set_24.c
+new file mode 100644
+index 00000000000..54b0e3d4a83
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/aarch64/options_set_24.c
+@@ -0,0 +1,11 @@
++/* { dg-do compile } */
++/* { dg-additional-options "-march=armv8.4-a+fp16fml+fp16" } */
++
++int main ()
++{
++  return 0;
++}
++
++/* { dg-final { scan-assembler {\.arch armv8\.4-a\+crc\+fp16} } } */
++
++ /* fp16 smallest set to emit.  */
+diff --git a/gcc/testsuite/gcc.target/aarch64/options_set_25.c b/gcc/testsuite/gcc.target/aarch64/options_set_25.c
+new file mode 100644
+index 00000000000..a3b2d63c06e
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/aarch64/options_set_25.c
+@@ -0,0 +1,11 @@
++/* { dg-do compile } */
++/* { dg-additional-options "-march=armv8.4-a+fp16fml+fp+fp16" } */
++
++int main ()
++{
++  return 0;
++}
++
++/* { dg-final { scan-assembler {\.arch armv8\.4-a\+crc\+fp16} } } */
++
++ /* fp16 smallest set to emit.  */
+diff --git a/gcc/testsuite/gcc.target/aarch64/options_set_26.c b/gcc/testsuite/gcc.target/aarch64/options_set_26.c
+new file mode 100644
+index 00000000000..b383e0aced2
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/aarch64/options_set_26.c
+@@ -0,0 +1,11 @@
++/* { dg-do compile } */
++/* { dg-additional-options "-march=armv8.4-a+fp16" } */
++
++int main ()
++{
++  return 0;
++}
++
++/* { dg-final { scan-assembler {\.arch armv8\.4-a\+crc\+fp16} } } */
++
++ /* fp16 smallest set to emit.  */
 diff --git a/gcc/testsuite/gcc.target/i386/avx512bw-pr94500.c b/gcc/testsuite/gcc.target/i386/avx512bw-pr94500.c
 new file mode 100644
 index 00000000000..7effdac5a17
@@ -2891,11 +3263,63 @@ index 5f9dc50eef6..7f7e4173302 100644
  		set_ptr_info_alignment (get_ptr_info (forcedname),
  					halign, hmisalign);
  	    }
+diff --git a/libatomic/ChangeLog b/libatomic/ChangeLog
+index 59fc1952792..5f89d6aade8 100644
+--- a/libatomic/ChangeLog
++++ b/libatomic/ChangeLog
+@@ -1,3 +1,8 @@
++2020-04-19  Uroš Bizjak  <ubizjak@gmail.com>
++
++	* config/x86/fenv.c (__atomic_feraiseexcept) [__SSE_MATH__]:
++	Remove unneeded assignments to volatile memory.
++
+ 2020-03-04  Release Manager
+ 
+ 	* GCC 8.4.0 released.
+diff --git a/libatomic/config/x86/fenv.c b/libatomic/config/x86/fenv.c
+index 36d86f369fe..f8d678744db 100644
+--- a/libatomic/config/x86/fenv.c
++++ b/libatomic/config/x86/fenv.c
+@@ -57,9 +57,7 @@ __atomic_feraiseexcept (int excepts)
+     {
+       float f = 0.0f;
+ #ifdef __SSE_MATH__
+-      volatile float r __attribute__ ((unused));
+       asm volatile ("%vdivss\t{%0, %d0|%d0, %0}" : "+x" (f));
+-      r = f; /* Needed to trigger exception.   */
+ #else
+       asm volatile ("fdiv\t{%y0, %0|%0, %y0}" : "+t" (f));
+       /* No need for fwait, exception is triggered by emitted fstp.  */
+@@ -77,9 +75,7 @@ __atomic_feraiseexcept (int excepts)
+     {
+       float f = 1.0f, g = 0.0f;
+ #ifdef __SSE_MATH__
+-      volatile float r __attribute__ ((unused));
+       asm volatile ("%vdivss\t{%1, %d0|%d0, %1}" : "+x" (f) : "xm" (g));
+-      r = f; /* Needed to trigger exception.   */
+ #else
+       asm volatile ("fdivs\t%1" : "+t" (f) : "m" (g));
+       /* No need for fwait, exception is triggered by emitted fstp.  */
+@@ -105,9 +101,7 @@ __atomic_feraiseexcept (int excepts)
+     {
+       float f = 1.0f, g = 3.0f;
+ #ifdef __SSE_MATH__
+-      volatile float r __attribute__ ((unused));
+       asm volatile ("%vdivss\t{%1, %d0|%d0, %1}" : "+x" (f) : "xm" (g));
+-      r = f; /* Needed to trigger exception.   */
+ #else
+       asm volatile ("fdivs\t%1" : "+t" (f) : "m" (g));
+       /* No need for fwait, exception is triggered by emitted fstp.  */
 diff --git a/libgcc/ChangeLog b/libgcc/ChangeLog
-index d0ac4295575..69f9f7ea863 100644
+index d0ac4295575..2a43d9c0c8e 100644
 --- a/libgcc/ChangeLog
 +++ b/libgcc/ChangeLog
-@@ -1,3 +1,12 @@
+@@ -1,3 +1,17 @@
++2020-04-19  Uroš Bizjak  <ubizjak@gmail.com>
++
++	* config/i386/sfp-exceptions.c (__sfp_handle_exceptions) [__SSE_MATH__]:
++	Remove unneeded assignments to volatile memory.
++
 +2020-03-04  H.J. Lu  <hongjiu.lu@intel.com>
 +
 +	Backport from mainline
@@ -2908,6 +3332,40 @@ index d0ac4295575..69f9f7ea863 100644
  2020-03-04  Release Manager
  
  	* GCC 8.4.0 released.
+diff --git a/libgcc/config/i386/sfp-exceptions.c b/libgcc/config/i386/sfp-exceptions.c
+index 9d7d88d643b..8446b55f1ba 100644
+--- a/libgcc/config/i386/sfp-exceptions.c
++++ b/libgcc/config/i386/sfp-exceptions.c
+@@ -48,9 +48,7 @@ __sfp_handle_exceptions (int _fex)
+     {
+       float f = 0.0f;
+ #ifdef __SSE_MATH__
+-      volatile float r __attribute__ ((unused));
+       asm volatile ("%vdivss\t{%0, %d0|%d0, %0}" : "+x" (f));
+-      r = f; /* Needed to trigger exception.   */
+ #else
+       asm volatile ("fdiv\t{%y0, %0|%0, %y0}" : "+t" (f));
+       /* No need for fwait, exception is triggered by emitted fstp.  */
+@@ -68,9 +66,7 @@ __sfp_handle_exceptions (int _fex)
+     {
+       float f = 1.0f, g = 0.0f;
+ #ifdef __SSE_MATH__
+-      volatile float r __attribute__ ((unused));
+       asm volatile ("%vdivss\t{%1, %d0|%d0, %1}" : "+x" (f) : "xm" (g));
+-      r = f; /* Needed to trigger exception.   */
+ #else
+       asm volatile ("fdivs\t%1" : "+t" (f) : "m" (g));
+       /* No need for fwait, exception is triggered by emitted fstp.  */
+@@ -96,9 +92,7 @@ __sfp_handle_exceptions (int _fex)
+     {
+       float f = 1.0f, g = 3.0f;
+ #ifdef __SSE_MATH__
+-      volatile float r __attribute__ ((unused));
+       asm volatile ("%vdivss\t{%1, %d0|%d0, %1}" : "+x" (f) : "xm" (g));
+-      r = f; /* Needed to trigger exception.   */
+ #else
+       asm volatile ("fdivs\t%1" : "+t" (f) : "m" (g));
+       /* No need for fwait, exception is triggered by emitted fstp.  */
 diff --git a/libgcc/config/i386/shadow-stack-unwind.h b/libgcc/config/i386/shadow-stack-unwind.h
 index 40f48df2aec..c3ee8745cf6 100644
 --- a/libgcc/config/i386/shadow-stack-unwind.h
@@ -2959,6 +3417,53 @@ index 40f48df2aec..c3ee8745cf6 100644
 +  else							\
 +    frames++;
 +#endif
+diff --git a/libgfortran/ChangeLog b/libgfortran/ChangeLog
+index 60d9b434ad1..b4825c78c45 100644
+--- a/libgfortran/ChangeLog
++++ b/libgfortran/ChangeLog
+@@ -1,3 +1,8 @@
++2020-04-19  Uroš Bizjak  <ubizjak@gmail.com>
++
++	* config/fpu-387.h (local_feraiseexcept) [__SSE_MATH__]:
++	Remove unneeded assignments to volatile memory.
++
+ 2020-03-04  Release Manager
+ 
+ 	* GCC 8.4.0 released.
+diff --git a/libgfortran/config/fpu-387.h b/libgfortran/config/fpu-387.h
+index c6cb873fc0e..9a3cb9a2efa 100644
+--- a/libgfortran/config/fpu-387.h
++++ b/libgfortran/config/fpu-387.h
+@@ -103,9 +103,7 @@ local_feraiseexcept (int excepts)
+     {
+       float f = 0.0f;
+ #ifdef __SSE_MATH__
+-      volatile float r __attribute__ ((unused));
+       __asm__ __volatile__ ("%vdivss\t{%0, %d0|%d0, %0}" : "+x" (f));
+-      r = f; /* Needed to trigger exception.   */
+ #else
+       __asm__ __volatile__ ("fdiv\t{%y0, %0|%0, %y0}" : "+t" (f));
+       /* No need for fwait, exception is triggered by emitted fstp.  */
+@@ -123,9 +121,7 @@ local_feraiseexcept (int excepts)
+     {
+       float f = 1.0f, g = 0.0f;
+ #ifdef __SSE_MATH__
+-      volatile float r __attribute__ ((unused));
+       __asm__ __volatile__ ("%vdivss\t{%1, %d0|%d0, %1}" : "+x" (f) : "xm" (g));
+-      r = f; /* Needed to trigger exception.   */
+ #else
+       __asm__ __volatile__ ("fdivs\t%1" : "+t" (f) : "m" (g));
+       /* No need for fwait, exception is triggered by emitted fstp.  */
+@@ -151,9 +147,7 @@ local_feraiseexcept (int excepts)
+     {
+       float f = 1.0f, g = 3.0f;
+ #ifdef __SSE_MATH__
+-      volatile float r __attribute__ ((unused));
+       __asm__ __volatile__ ("%vdivss\t{%1, %d0|%d0, %1}" : "+x" (f) : "xm" (g));
+-      r = f; /* Needed to trigger exception.   */
+ #else
+       __asm__ __volatile__ ("fdivs\t%1" : "+t" (f) : "m" (g));
+       /* No need for fwait, exception is triggered by emitted fstp.  */
 diff --git a/libiberty/ChangeLog b/libiberty/ChangeLog
 index 227517e46c7..73e9717019c 100644
 --- a/libiberty/ChangeLog
