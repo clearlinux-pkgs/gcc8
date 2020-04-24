@@ -31,7 +31,9 @@ Fritz Reese (2):
       Backport form master: Fix fortran/85982 ICE in resolve_component.
       Indicate backport in changelogs from last commit.
 
-GCC Administrator (48):
+GCC Administrator (50):
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -141,8 +143,9 @@ Tamar Christina (2):
       AArch64: Break apart paradoxical subregs for VSTRUCT writes (PR target/94052)
       AArch64: Fix options canonicanization for assembler
 
-Thomas König (1):
+Thomas König (2):
       Backport from trunk of the fix for PR 94270.
+      Fix PR 93956, wrong pointer when returned via function.
 
 Tobias Burnus (1):
       [Fortran] Disable front-end optimization for OpenACC atomic (PR93462)
@@ -2959,10 +2962,19 @@ index f3d7c5720b7..bdad016baeb 100644
  @opindex march
  Specify the name of the target architecture and, optionally, one or
 diff --git a/gcc/fortran/ChangeLog b/gcc/fortran/ChangeLog
-index d3be7538ff7..9104f16a847 100644
+index d3be7538ff7..4b4c1d8e886 100644
 --- a/gcc/fortran/ChangeLog
 +++ b/gcc/fortran/ChangeLog
-@@ -1,3 +1,54 @@
+@@ -1,3 +1,63 @@
++2020-04-24  Thomas Koenig  <tkoenig@gcc.gnu.org>
++
++	Backport from trunk.
++	PR fortran/93956
++	* expr.c (gfc_check_pointer_assign): Also set subref_array_pointer
++	when a function returns a pointer.
++	* interface.c (gfc_set_subref_array_pointer_arg): New function.
++	(gfc_procedure_use): Call it.
++
 +2020-04-14  Thomas Koenig  <tkoenig@gcc.gnu.org>
 +
 +	Backport from trunk.
@@ -3085,6 +3097,24 @@ index 13dd7352d27..8e7327dc568 100644
  	      m = MATCH_ERROR;
  	      goto cleanup;
  	    }
+diff --git a/gcc/fortran/expr.c b/gcc/fortran/expr.c
+index f145e9b363b..5348f1bf4ce 100644
+--- a/gcc/fortran/expr.c
++++ b/gcc/fortran/expr.c
+@@ -3895,8 +3895,11 @@ gfc_check_pointer_assign (gfc_expr *lvalue, gfc_expr *rvalue, bool is_init_expr)
+   if (rvalue->expr_type == EXPR_NULL)
+     return true;
+ 
+-  if (rvalue->expr_type == EXPR_VARIABLE && is_subref_array (rvalue))
+-    lvalue->symtree->n.sym->attr.subref_array_pointer = 1;
++  /* A function may also return subref arrray pointer.  */
++
++  if ((rvalue->expr_type == EXPR_VARIABLE && is_subref_array (rvalue))
++      || rvalue->expr_type == EXPR_FUNCTION)
++      lvalue->symtree->n.sym->attr.subref_array_pointer = 1;
+ 
+   attr = gfc_expr_attr (rvalue);
+ 
 diff --git a/gcc/fortran/frontend-passes.c b/gcc/fortran/frontend-passes.c
 index be0fd0f7e6c..e317c89ba5d 100644
 --- a/gcc/fortran/frontend-passes.c
@@ -3097,6 +3127,58 @@ index be0fd0f7e6c..e317c89ba5d 100644
  	    case EXEC_OMP_ATOMIC:
  	      in_omp_atomic = true;
  	      break;
+diff --git a/gcc/fortran/interface.c b/gcc/fortran/interface.c
+index 04850b0406c..26837d7c1fa 100644
+--- a/gcc/fortran/interface.c
++++ b/gcc/fortran/interface.c
+@@ -3619,6 +3619,36 @@ check_intents (gfc_formal_arglist *f, gfc_actual_arglist *a)
+   return true;
+ }
+ 
++/* Go through the argument list of a procedure and look for
++   pointers which may be set, possibly introducing a span.  */
++
++static void
++gfc_set_subref_array_pointer_arg (gfc_formal_arglist *dummy_args,
++				  gfc_actual_arglist *actual_args)
++{
++  gfc_formal_arglist *f;
++  gfc_actual_arglist *a;
++  gfc_symbol *a_sym;
++  for (f = dummy_args, a = actual_args; f && a ; f = f->next, a = a->next)
++    {
++
++      if (f->sym == NULL)
++	continue;
++
++      if (!f->sym->attr.pointer || f->sym->attr.intent == INTENT_IN)
++	continue;
++
++      if (a->expr == NULL || a->expr->expr_type != EXPR_VARIABLE)
++	continue;
++      a_sym = a->expr->symtree->n.sym;
++
++      if (!a_sym->attr.pointer)
++	continue;
++
++      a_sym->attr.subref_array_pointer = 1;
++    }
++  return;
++}
+ 
+ /* Check how a procedure is used against its interface.  If all goes
+    well, the actual argument list will also end up being properly
+@@ -3765,6 +3795,10 @@ gfc_procedure_use (gfc_symbol *sym, gfc_actual_arglist **ap, locus *where)
+   if (warn_aliasing)
+     check_some_aliasing (dummy_args, *ap);
+ 
++  /* Set the subref_array_pointer_arg if needed.  */
++  if (dummy_args)
++    gfc_set_subref_array_pointer_arg (dummy_args, *ap);
++
+   return true;
+ }
+ 
 diff --git a/gcc/fortran/match.c b/gcc/fortran/match.c
 index d0a4b53da6b..9b61f1f52ec 100644
 --- a/gcc/fortran/match.c
@@ -3539,10 +3621,16 @@ index d9c66d42c26..0aa78a31411 100644
  extern void mark_end_of_function_resources (rtx, bool);
  extern void init_resource_info (rtx_insn *);
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index ab652ddc144..f3eca678e3b 100644
+index ab652ddc144..2b6aa9e6756 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,189 @@
+@@ -1,3 +1,195 @@
++2020-04-24  Thomas Koenig  <tkoenig@gcc.gnu.org>
++
++	Backport from trunk
++	PR fortran/93956
++	* gfortran.dg/pointer_assign_13.f90: New test.
++
 +2020-04-16  Andre Vieira  <andre.simoesdiasvieira@arm.com>
 +
 +	Backport from mainline
@@ -5507,6 +5595,59 @@ index 00000000000..579f0494b78
 +      f = x
 +   end
 +end
+diff --git a/gcc/testsuite/gfortran.dg/pointer_assign_13.f90 b/gcc/testsuite/gfortran.dg/pointer_assign_13.f90
+new file mode 100644
+index 00000000000..b3f2cd9dab7
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/pointer_assign_13.f90
+@@ -0,0 +1,47 @@
++! { dg-do run }
++! PR 93956 - span was set incorrectly, leading to wrong code.
++! Original test case by "martin".
++program array_temps
++  implicit none
++  
++  type :: tt
++     integer :: u = 1
++     integer :: v = 2
++  end type tt
++
++  type(tt), dimension(:), pointer :: r
++  integer :: n
++  integer, dimension(:), pointer :: p, q, u
++
++  n = 10
++  allocate(r(1:n))
++  call foo(r%v,n)
++  p => get(r(:))
++  call foo(p, n)
++  call get2(r,u)
++  call foo(u,n)
++  q => r%v
++  call foo(q, n)
++
++deallocate(r)
++
++contains
++
++   subroutine foo(a, n)
++      integer, dimension(:), intent(in) :: a
++      integer, intent(in) :: n
++      if (sum(a(1:n)) /= 2*n) stop 1
++   end subroutine foo
++
++   function get(x) result(q)
++      type(tt), dimension(:), target, intent(in) :: x
++      integer, dimension(:), pointer :: q
++      q => x(:)%v
++   end function get
++
++   subroutine get2(x,q)
++      type(tt), dimension(:), target, intent(in) :: x
++      integer, dimension(:), pointer, intent(out) :: q
++      q => x(:)%v
++    end subroutine get2
++end program array_temps
 diff --git a/gcc/testsuite/gfortran.dg/pr91913.f90 b/gcc/testsuite/gfortran.dg/pr91913.f90
 new file mode 100644
 index 00000000000..7d5477ac0c3
