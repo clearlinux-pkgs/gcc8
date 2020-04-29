@@ -1,4 +1,4 @@
-Andre Vieira (20):
+Andre Vieira (21):
       aarch64: Add early clobber for aarch64_store_exclusive.
       aarch64: Simplify LSE cas generation
       aarch64: Improve cas generation
@@ -19,6 +19,7 @@ Andre Vieira (20):
       aarch64: Fix ICE due to aarch64_gen_compare_reg_maybe_ze [PR94435]
       re PR target/90724 (ICE with __sync_bool_compare_and_swap with -march=armv8.2-a+sve)
       aarch64: Fix for PR target/94814
+      aarch64: Force TImode values into even registers
 
 Carl Love (2):
       rs6000 Add command line and builtin compatibility check
@@ -32,7 +33,8 @@ Fritz Reese (2):
       Backport form master: Fix fortran/85982 ICE in resolve_component.
       Indicate backport in changelogs from last commit.
 
-GCC Administrator (54):
+GCC Administrator (55):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -170,10 +172,18 @@ index a2f28f43be3..6da4de57dc6 100644
 -8.4.0
 +8.4.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 142499c563c..96eeb2791d6 100644
+index 142499c563c..3fbb6cc36f2 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,417 @@
+@@ -1,3 +1,425 @@
++2020-04-29  Andre Vieira  <andre.simoesdiasvieira@arm.com>
++
++	Backport from mainline.
++	2018-10-31  Richard Henderson  <richard.henderson@linaro.org>
++
++	* config/aarch64/aarch64.c (aarch64_hard_regno_mode_ok): Force
++	16-byte modes held in GP registers to use an even regno.
++
 +2020-04-28  Andre Vieira  <andre.simoesdiasvieira@arm.com>
 +
 +	PR target/94814
@@ -684,10 +694,29 @@ index 1154fc3d58d..da664fc5d29 100644
  
  (define_insn "*aarch64_mov<mode>"
 diff --git a/gcc/config/aarch64/aarch64.c b/gcc/config/aarch64/aarch64.c
-index 20761578fb6..5eec1aae54a 100644
+index 20761578fb6..525deba56ea 100644
 --- a/gcc/config/aarch64/aarch64.c
 +++ b/gcc/config/aarch64/aarch64.c
-@@ -1517,13 +1517,69 @@ emit_set_insn (rtx x, rtx y)
+@@ -1369,10 +1369,14 @@ aarch64_hard_regno_mode_ok (unsigned regno, machine_mode mode)
+   if (regno == FRAME_POINTER_REGNUM || regno == ARG_POINTER_REGNUM)
+     return mode == Pmode;
+ 
+-  if (GP_REGNUM_P (regno) && known_le (GET_MODE_SIZE (mode), 16))
+-    return true;
+-
+-  if (FP_REGNUM_P (regno))
++  if (GP_REGNUM_P (regno))
++    {
++      if (known_le (GET_MODE_SIZE (mode), 8))
++	return true;
++      else if (known_le (GET_MODE_SIZE (mode), 16))
++	return (regno & 1) == 0;
++    }
++  else if (FP_REGNUM_P (regno))
+     {
+       if (vec_flags & VEC_STRUCT)
+ 	return end_hard_regno (mode, regno) - 1 <= V31_REGNUM;
+@@ -1517,13 +1521,69 @@ emit_set_insn (rtx x, rtx y)
  rtx
  aarch64_gen_compare_reg (RTX_CODE code, rtx x, rtx y)
  {
@@ -696,15 +725,15 @@ index 20761578fb6..5eec1aae54a 100644
 +  machine_mode cmp_mode = GET_MODE (x);
 +  machine_mode cc_mode;
 +  rtx cc_reg;
- 
--  emit_set_insn (cc_reg, gen_rtx_COMPARE (mode, x, y));
++
 +  if (cmp_mode == TImode)
 +    {
 +      gcc_assert (code == NE);
 +
 +      cc_mode = CCmode;
 +      cc_reg = gen_rtx_REG (cc_mode, CC_REGNUM);
-+
+ 
+-  emit_set_insn (cc_reg, gen_rtx_COMPARE (mode, x, y));
 +      rtx x_lo = operand_subword (x, 0, 0, TImode);
 +      rtx y_lo = operand_subword (y, 0, 0, TImode);
 +      emit_set_insn (cc_reg, gen_rtx_COMPARE (cc_mode, x_lo, y_lo));
@@ -760,7 +789,7 @@ index 20761578fb6..5eec1aae54a 100644
  /* Build the SYMBOL_REF for __tls_get_addr.  */
  
  static GTY(()) rtx tls_get_addr_libfunc;
-@@ -6600,7 +6656,7 @@ sizetochar (int size)
+@@ -6600,7 +6660,7 @@ sizetochar (int size)
       'S/T/U/V':		Print a FP/SIMD register name for a register list.
  			The register printed is the FP/SIMD register name
  			of X + 0/1/2/3 for S/T/U/V.
@@ -769,7 +798,7 @@ index 20761578fb6..5eec1aae54a 100644
       'X':		Print bottom 16 bits of integer constant in hex.
       'w/x':		Print a general register name or the zero register
  			(32-bit or 64-bit).
-@@ -6786,12 +6842,13 @@ aarch64_print_operand (FILE *f, rtx x, int code)
+@@ -6786,12 +6846,13 @@ aarch64_print_operand (FILE *f, rtx x, int code)
        break;
  
      case 'R':
@@ -789,7 +818,7 @@ index 20761578fb6..5eec1aae54a 100644
        break;
  
      case 'X':
-@@ -14117,40 +14174,54 @@ static void
+@@ -14117,40 +14178,54 @@ static void
  aarch64_emit_load_exclusive (machine_mode mode, rtx rval,
  			     rtx mem, rtx model_rtx)
  {
@@ -867,7 +896,7 @@ index 20761578fb6..5eec1aae54a 100644
  }
  
  /* Mark the previous jump instruction as unlikely.  */
-@@ -14162,30 +14233,89 @@ aarch64_emit_unlikely_jump (rtx insn)
+@@ -14162,30 +14237,89 @@ aarch64_emit_unlikely_jump (rtx insn)
    add_reg_br_prob_note (jump, profile_probability::very_unlikely ());
  }
  
@@ -976,7 +1005,7 @@ index 20761578fb6..5eec1aae54a 100644
  
    bval = operands[0];
    rval = operands[1];
-@@ -14196,88 +14326,107 @@ aarch64_expand_compare_and_swap (rtx operands[])
+@@ -14196,88 +14330,107 @@ aarch64_expand_compare_and_swap (rtx operands[])
    mod_s = operands[6];
    mod_f = operands[7];
    mode = GET_MODE (mem);
@@ -1145,7 +1174,7 @@ index 20761578fb6..5eec1aae54a 100644
  /* Emit a barrier, that is appropriate for memory model MODEL, at the end of a
     sequence implementing an atomic operation.  */
  
-@@ -14295,42 +14444,6 @@ aarch64_emit_post_barrier (enum memmodel model)
+@@ -14295,42 +14448,6 @@ aarch64_emit_post_barrier (enum memmodel model)
      }
  }
  
@@ -1188,7 +1217,7 @@ index 20761578fb6..5eec1aae54a 100644
  /* Split a compare and swap pattern.  */
  
  void
-@@ -14339,13 +14452,11 @@ aarch64_split_compare_and_swap (rtx operands[])
+@@ -14339,13 +14456,11 @@ aarch64_split_compare_and_swap (rtx operands[])
    /* Split after prolog/epilog to avoid interactions with shrinkwrapping.  */
    gcc_assert (epilogue_completed);
  
@@ -1203,7 +1232,7 @@ index 20761578fb6..5eec1aae54a 100644
  
    rval = operands[0];
    mem = operands[1];
-@@ -14366,7 +14477,7 @@ aarch64_split_compare_and_swap (rtx operands[])
+@@ -14366,7 +14481,7 @@ aarch64_split_compare_and_swap (rtx operands[])
  	CBNZ	scratch, .label1
      .label2:
  	CMP	rval, 0.  */
@@ -1212,7 +1241,7 @@ index 20761578fb6..5eec1aae54a 100644
  
    label1 = NULL;
    if (!is_weak)
-@@ -14379,26 +14490,20 @@ aarch64_split_compare_and_swap (rtx operands[])
+@@ -14379,26 +14494,20 @@ aarch64_split_compare_and_swap (rtx operands[])
    /* The initial load can be relaxed for a __sync operation since a final
       barrier will be emitted to stop code hoisting.  */
    if (is_mm_sync (model))
@@ -1246,7 +1275,7 @@ index 20761578fb6..5eec1aae54a 100644
  
    aarch64_emit_store_exclusive (mode, scratch, mem, newval, model_rtx);
  
-@@ -14410,273 +14515,21 @@ aarch64_split_compare_and_swap (rtx operands[])
+@@ -14410,273 +14519,21 @@ aarch64_split_compare_and_swap (rtx operands[])
        aarch64_emit_unlikely_jump (gen_rtx_SET (pc_rtx, x));
      }
    else
