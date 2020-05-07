@@ -41,7 +41,8 @@ Fritz Reese (2):
       Backport form master: Fix fortran/85982 ICE in resolve_component.
       Indicate backport in changelogs from last commit.
 
-GCC Administrator (62):
+GCC Administrator (63):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -180,9 +181,10 @@ Thomas König (2):
 Tobias Burnus (1):
       [Fortran] Disable front-end optimization for OpenACC atomic (PR93462)
 
-Uros Bizjak (2):
+Uros Bizjak (3):
       i386: Require OPTION_MASK_ISA_SSE2 for __builtin_ia32_movq128 [PR94603]
       i386: Remove unneeded assignments when triggering SSE exceptions
+      alpha: Implement the PR94780 fix for alpha.
 
 Will Schmidt (1):
       rs6000 pragma fix backport from mainline to gcc-8
@@ -195,10 +197,16 @@ index a2f28f43be3..6da4de57dc6 100644
 -8.4.0
 +8.4.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 142499c563c..50fd225dea6 100644
+index 142499c563c..9fadbea59e2 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,456 @@
+@@ -1,3 +1,462 @@
++2020-05-07  Uroš Bizjak  <ubizjak@gmail.com>
++
++	* config/alpha/alpha.c (alpha_atomic_assign_expand_fenv): Use
++	TARGET_EXPR instead of MODIFY_EXPR for the first assignments to
++	fenv_var and new_fenv_var.
++
 +2020-05-04  Bin Cheng  <bin.cheng@linux.alibaba.com>
 +
 +	PR tree-optimization/93674
@@ -2471,6 +2479,32 @@ index 5d41d435040..7b0565a00b1 100644
  (define_predicate "aarch64_pluslong_immediate"
    (and (match_code "const_int")
         (match_test "(INTVAL (op) < 0xffffff && INTVAL (op) > -0xffffff)")))
+diff --git a/gcc/config/alpha/alpha.c b/gcc/config/alpha/alpha.c
+index ee95b4428ec..8f68be199e1 100644
+--- a/gcc/config/alpha/alpha.c
++++ b/gcc/config/alpha/alpha.c
+@@ -9903,8 +9903,8 @@ alpha_atomic_assign_expand_fenv (tree *hold, tree *clear, tree *update)
+     = build_fn_decl ("__ieee_set_fp_control",
+ 		     build_function_type_list (void_type_node, NULL));
+   mask = build_int_cst (long_unsigned_type_node, ~SWCR_STATUS_MASK);
+-  ld_fenv = build2 (MODIFY_EXPR, long_unsigned_type_node,
+-		    fenv_var, build_call_expr (get_fpscr, 0));
++  ld_fenv = build4 (TARGET_EXPR, long_unsigned_type_node, fenv_var,
++		    build_call_expr (get_fpscr, 0), NULL_TREE, NULL_TREE);
+   masked_fenv = build2 (BIT_AND_EXPR, long_unsigned_type_node, fenv_var, mask);
+   hold_fnclex = build_call_expr (set_fpscr, 1, masked_fenv);
+   *hold = build2 (COMPOUND_EXPR, void_type_node,
+@@ -9925,8 +9925,8 @@ alpha_atomic_assign_expand_fenv (tree *hold, tree *clear, tree *update)
+        __atomic_feraiseexcept (new_fenv_var);  */
+ 
+   new_fenv_var = create_tmp_var_raw (long_unsigned_type_node);
+-  reload_fenv = build2 (MODIFY_EXPR, long_unsigned_type_node, new_fenv_var,
+-			build_call_expr (get_fpscr, 0));
++  reload_fenv = build4 (TARGET_EXPR, long_unsigned_type_node, new_fenv_var,
++			build_call_expr (get_fpscr, 0), NULL_TREE, NULL_TREE);
+   restore_fnenv = build_call_expr (set_fpscr, 1, fenv_var);
+   atomic_feraiseexcept = builtin_decl_implicit (BUILT_IN_ATOMIC_FERAISEEXCEPT);
+   update_call
 diff --git a/gcc/config/arm/arm.md b/gcc/config/arm/arm.md
 index f78e1477eab..6d6b37719e0 100644
 --- a/gcc/config/arm/arm.md
