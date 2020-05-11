@@ -41,7 +41,11 @@ Fritz Reese (2):
       Backport form master: Fix fortran/85982 ICE in resolve_component.
       Indicate backport in changelogs from last commit.
 
-GCC Administrator (63):
+GCC Administrator (67):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -142,9 +146,10 @@ Jonathan Wakely (5):
 Marek Polacek (1):
       c++: Bogus error with alignof [PR90736]
 
-Mark Eggleston (2):
+Mark Eggleston (3):
       fortran: ICE using undeclared symbol in array constructor PR93484
       fortran: ICE equivalence with an element of an array PR94030
+      Fortran : Spurious warning message with -Wsurprising PR59107
 
 Martin Jambor (2):
       gcc-8 sra: Cap number of sub-access propagations with a param (PR 93435)
@@ -3343,10 +3348,25 @@ index f3d7c5720b7..bdad016baeb 100644
  @opindex march
  Specify the name of the target architecture and, optionally, one or
 diff --git a/gcc/fortran/ChangeLog b/gcc/fortran/ChangeLog
-index d3be7538ff7..b81ffd555ad 100644
+index d3be7538ff7..dc79913f47b 100644
 --- a/gcc/fortran/ChangeLog
 +++ b/gcc/fortran/ChangeLog
-@@ -1,3 +1,70 @@
+@@ -1,3 +1,85 @@
++2020-05-11  Mark Eggleston  <markeggleston@gcc.gnu.org>
++
++	Backported from mainline
++	2020-05-11  Janus Weil  <janus@gcc.gnu.org>
++		    Dominique d'Humieres  <dominiq@lps.ens.fr>
++
++	PR fortran/59107
++	* gfortran.h: Rename field resolved as resolve_symbol_called
++	and assign two 2 bits instead of 1.
++	* interface.c (gfc_find_typebound_dtio_proc): Use new field name.
++	* resolve.c (gfc_resolve_intrinsic): Replace check of the formal
++	field with resolve_symbol_called is at least 2, if it is not
++	set the field to 2.  (resolve_symbol): Use new field name and
++	check whether it is at least 1, if it is not set the field to 1.
++
 +2020-04-27  Thomas Koenig  <tkoenig@gcc.gnu.org>
 +
 +	PR fortran/93956
@@ -3497,6 +3517,36 @@ index be0fd0f7e6c..e317c89ba5d 100644
  	    case EXEC_OMP_ATOMIC:
  	      in_omp_atomic = true;
  	      break;
+diff --git a/gcc/fortran/gfortran.h b/gcc/fortran/gfortran.h
+index b2e80a6b0a9..3d6e25a3ff4 100644
+--- a/gcc/fortran/gfortran.h
++++ b/gcc/fortran/gfortran.h
+@@ -1587,7 +1587,10 @@ typedef struct gfc_symbol
+   /* Set if the symbol is used in a function result specification .  */
+   unsigned fn_result_spec:1;
+   /* Used to avoid multiple resolutions of a single symbol.  */
+-  unsigned resolved:1;
++  /* = 2 if this has already been resolved as an intrinsic,
++       in gfc_resolve_intrinsic,
++     = 1 if it has been resolved in resolve_symbol.  */
++  unsigned resolve_symbol_called:2;
+   /* Set if this is a module function or subroutine with the
+      abreviated declaration in a submodule.  */
+   unsigned abr_modproc_decl:1;
+diff --git a/gcc/fortran/interface.c b/gcc/fortran/interface.c
+index 04850b0406c..689c30210d7 100644
+--- a/gcc/fortran/interface.c
++++ b/gcc/fortran/interface.c
+@@ -4940,7 +4940,8 @@ gfc_find_typebound_dtio_proc (gfc_symbol *derived, bool write, bool formatted)
+   gfc_symtree *tb_io_st = NULL;
+   bool t = false;
+ 
+-  if (!derived || !derived->resolved || derived->attr.flavor != FL_DERIVED)
++  if (!derived || !derived->resolve_symbol_called
++      || derived->attr.flavor != FL_DERIVED)
+     return NULL;
+ 
+   /* Try to find a typebound DTIO binding.  */
 diff --git a/gcc/fortran/match.c b/gcc/fortran/match.c
 index d0a4b53da6b..9b61f1f52ec 100644
 --- a/gcc/fortran/match.c
@@ -3514,10 +3564,35 @@ index d0a4b53da6b..9b61f1f52ec 100644
        /* If a comma appears, it is an intrinsic subprogram. */
        gfc_gobble_whitespace ();
 diff --git a/gcc/fortran/resolve.c b/gcc/fortran/resolve.c
-index 8afc72350c1..69d877ed55b 100644
+index 8afc72350c1..d34d3dc66fd 100644
 --- a/gcc/fortran/resolve.c
 +++ b/gcc/fortran/resolve.c
-@@ -16311,7 +16311,8 @@ resolve_equivalence (gfc_equiv *eq)
+@@ -1746,9 +1746,11 @@ gfc_resolve_intrinsic (gfc_symbol *sym, locus *loc)
+   gfc_intrinsic_sym* isym = NULL;
+   const char* symstd;
+ 
+-  if (sym->formal)
++  if (sym->resolve_symbol_called >= 2)
+     return true;
+ 
++  sym->resolve_symbol_called = 2;
++
+   /* Already resolved.  */
+   if (sym->from_intmod && sym->ts.type != BT_UNKNOWN)
+     return true;
+@@ -14601,9 +14603,9 @@ resolve_symbol (gfc_symbol *sym)
+   gfc_array_spec *as;
+   bool saved_specification_expr;
+ 
+-  if (sym->resolved)
++  if (sym->resolve_symbol_called >= 1)
+     return;
+-  sym->resolved = 1;
++  sym->resolve_symbol_called = 1;
+ 
+   /* No symbol will ever have union type; only components can be unions.
+      Union type declaration symbols have type BT_UNKNOWN but flavor FL_UNION
+@@ -16311,7 +16313,8 @@ resolve_equivalence (gfc_equiv *eq)
  	  && !gfc_notify_std (GFC_STD_GNU, msg, sym->name, &e->where))
  		continue;
  
@@ -3527,7 +3602,7 @@ index 8afc72350c1..69d877ed55b 100644
        last_ts =&sym->ts;
        last_where = &e->where;
  
-@@ -16319,8 +16320,7 @@ resolve_equivalence (gfc_equiv *eq)
+@@ -16319,8 +16322,7 @@ resolve_equivalence (gfc_equiv *eq)
  	continue;
  
        /* Shall not be an automatic array.  */
@@ -3939,10 +4014,18 @@ index d9c66d42c26..0aa78a31411 100644
  extern void mark_end_of_function_resources (rtx, bool);
  extern void init_resource_info (rtx_insn *);
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index ab652ddc144..88c74e6fc15 100644
+index ab652ddc144..436ee423db1 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,225 @@
+@@ -1,3 +1,233 @@
++2020-05-11  Mark Eggleston  <markeggleston@gcc.gnu.org>
++
++	Backported from mainline
++	2020-05-11  Mark Eggleston  <markeggleston@gcc.gnu.org>
++
++	PR fortran/59107
++	* gfortran.dg/pr59107.f90: New test.
++
 +2020-05-04  Bin Cheng  <bin.cheng@linux.alibaba.com>
 +
 +	PR tree-optimization/93674
@@ -6264,6 +6347,23 @@ index 00000000000..579f0494b78
 +      f = x
 +   end
 +end
+diff --git a/gcc/testsuite/gfortran.dg/pr59107.f90 b/gcc/testsuite/gfortran.dg/pr59107.f90
+new file mode 100644
+index 00000000000..a84328f0851
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/pr59107.f90
+@@ -0,0 +1,11 @@
++! { dg-compile }
++! { dg-options "-Wsurprising" }
++
++! There should be no surprising warnings
++
++program p
++  Integer :: nargs
++  intrinsic :: command_argument_count
++  nargs = command_argument_count()
++end
++
 diff --git a/gcc/testsuite/gfortran.dg/pr91913.f90 b/gcc/testsuite/gfortran.dg/pr91913.f90
 new file mode 100644
 index 00000000000..7d5477ac0c3
