@@ -44,7 +44,8 @@ Fritz Reese (2):
       Backport form master: Fix fortran/85982 ICE in resolve_component.
       Indicate backport in changelogs from last commit.
 
-GCC Administrator (69):
+GCC Administrator (70):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -177,6 +178,10 @@ Richard Biener (1):
 Richard Earnshaw (1):
       arm: correct constraints on movsi_compare0 [PR91913]
 
+Szabolcs Nagy (2):
+      aarch64, libgcc: Fix unwinding from pac-ret to normal frames [PR94514]
+      aarch64: Fix .cfi_window_save with pac-ret [PR94515]
+
 Tamar Christina (2):
       AArch64: Break apart paradoxical subregs for VSTRUCT writes (PR target/94052)
       AArch64: Fix options canonicanization for assembler
@@ -207,10 +212,25 @@ index a2f28f43be3..6da4de57dc6 100644
 -8.4.0
 +8.4.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 142499c563c..eda5a7fbabe 100644
+index 142499c563c..99aea924392 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,471 @@
+@@ -1,3 +1,486 @@
++2020-05-14  Szabolcs Nagy  <szabolcs.nagy@arm.com>
++
++	Backport from mainline.
++	2020-04-27  Szabolcs Nagy  <szabolcs.nagy@arm.com>
++
++	PR target/94515
++	* dwarf2cfi.c (struct GTY): Add ra_mangled.
++	(cfi_row_equal_p): Check ra_mangled.
++	(dwarf2out_frame_debug_cfa_window_save): Remove the argument,
++	this only handles the sparc logic now.
++	(dwarf2out_frame_debug_cfa_toggle_ra_mangle): New function for
++	the aarch64 specific logic.
++	(dwarf2out_frame_debug): Update to use the new subroutines.
++	(change_cfi_row): Check ra_mangled.
++
 +2020-05-12  David Edelsohn  <dje.gcc@gmail.com>
 +
 +	Backport from mainline
@@ -3394,6 +3414,81 @@ index f3d7c5720b7..bdad016baeb 100644
  @item -march=@var{name}
  @opindex march
  Specify the name of the target architecture and, optionally, one or
+diff --git a/gcc/dwarf2cfi.c b/gcc/dwarf2cfi.c
+index bed6c981852..d496f57547a 100644
+--- a/gcc/dwarf2cfi.c
++++ b/gcc/dwarf2cfi.c
+@@ -68,6 +68,9 @@ struct GTY(()) dw_cfi_row
+ 
+   /* The expressions for any register column that is saved.  */
+   cfi_vec reg_save;
++
++  /* True if the return address is in a mangled state.  */
++  bool ra_mangled;
+ };
+ 
+ /* The caller's ORIG_REG is saved in SAVED_IN_REG.  */
+@@ -763,6 +766,9 @@ cfi_row_equal_p (dw_cfi_row *a, dw_cfi_row *b)
+         return false;
+     }
+ 
++  if (a->ra_mangled != b->ra_mangled)
++    return false;
++
+   return true;
+ }
+ 
+@@ -1370,6 +1376,21 @@ dwarf2out_frame_debug_cfa_window_save (void)
+   add_cfi (cfi);
+ }
+ 
++/* A subroutine of dwarf2out_frame_debug, process a REG_CFA_TOGGLE_RA_MANGLE.
++   Note: DW_CFA_GNU_window_save dwarf opcode is reused for toggling RA mangle
++   state, this is a target specific operation on AArch64 and can only be used
++   on other targets if they don't use the window save operation otherwise.  */
++
++static void
++dwarf2out_frame_debug_cfa_toggle_ra_mangle (void)
++{
++  dw_cfi_ref cfi = new_cfi ();
++
++  cfi->dw_cfi_opc = DW_CFA_GNU_window_save;
++  add_cfi (cfi);
++  cur_row->ra_mangled = !cur_row->ra_mangled;
++}
++
+ /* Record call frame debugging information for an expression EXPR,
+    which either sets SP or FP (adjusting how we calculate the frame
+    address) or saves a register to the stack or another register.
+@@ -2127,8 +2148,11 @@ dwarf2out_frame_debug (rtx_insn *insn)
+ 	break;
+ 
+       case REG_CFA_TOGGLE_RA_MANGLE:
++	dwarf2out_frame_debug_cfa_toggle_ra_mangle ();
++	handled_one = true;
++	break;
++
+       case REG_CFA_WINDOW_SAVE:
+-	/* We overload both of these operations onto the same DWARF opcode.  */
+ 	dwarf2out_frame_debug_cfa_window_save ();
+ 	handled_one = true;
+ 	break;
+@@ -2193,6 +2217,15 @@ change_cfi_row (dw_cfi_row *old_row, dw_cfi_row *new_row)
+       else if (!cfi_equal_p (r_old, r_new))
+         add_cfi (r_new);
+     }
++
++  if (old_row->ra_mangled != new_row->ra_mangled)
++    {
++      dw_cfi_ref cfi = new_cfi ();
++
++      /* DW_CFA_GNU_window_save is reused for toggling RA mangle state.  */
++      cfi->dw_cfi_opc = DW_CFA_GNU_window_save;
++      add_cfi (cfi);
++    }
+ }
+ 
+ /* Examine CFI and return true if a cfi label and set_loc is needed
 diff --git a/gcc/fortran/ChangeLog b/gcc/fortran/ChangeLog
 index d3be7538ff7..dc79913f47b 100644
 --- a/gcc/fortran/ChangeLog
@@ -4061,10 +4156,35 @@ index d9c66d42c26..0aa78a31411 100644
  extern void mark_end_of_function_resources (rtx, bool);
  extern void init_resource_info (rtx_insn *);
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index ab652ddc144..436ee423db1 100644
+index ab652ddc144..457e9ab93e4 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,233 @@
+@@ -1,3 +1,258 @@
++2020-05-14  Szabolcs Nagy  <szabolcs.nagy@arm.com>
++
++	Backport from mainline.
++	2020-04-27  Szabolcs Nagy  <szabolcs.nagy@arm.com>
++
++	PR target/94515
++	* g++.target/aarch64/pr94515-1.C: New test.
++	* g++.target/aarch64/pr94515-2.C: New test.
++
++2020-05-14  Szabolcs Nagy  <szabolcs.nagy@arm.com>
++
++	Backport from mainline.
++	2020-04-23  Szabolcs Nagy  <szabolcs.nagy@arm.com>
++
++	PR target/94514
++	* g++.target/aarch64/pr94514.C: Require lp64.
++	* gcc.target/aarch64/pr94514.c: Likewise.
++
++	Backport from mainline.
++	2020-04-21  Szabolcs Nagy  <szabolcs.nagy@arm.com>
++
++	PR target/94514
++	* g++.target/aarch64/pr94514.C: New test.
++	* gcc.target/aarch64/pr94514.c: New test.
++
 +2020-05-11  Mark Eggleston  <markeggleston@gcc.gnu.org>
 +
 +	Backported from mainline
@@ -4785,6 +4905,136 @@ index 00000000000..d36c9bdc158
 +  bz<o, p>(dm, bi, be, bg, bf, bh, bj, bk);
 +}
 +} // namespace an
+diff --git a/gcc/testsuite/g++.target/aarch64/pr94514.C b/gcc/testsuite/g++.target/aarch64/pr94514.C
+new file mode 100644
+index 00000000000..f73e64c9fc5
+--- /dev/null
++++ b/gcc/testsuite/g++.target/aarch64/pr94514.C
+@@ -0,0 +1,27 @@
++/* PR target/94514. Unwind across mixed pac-ret and non-pac-ret frames.  */
++/* { dg-do run } */
++/* { dg-require-effective-target lp64 } */
++
++__attribute__((noinline, target("sign-return-address=all")))
++static void do_throw (void)
++{
++  throw 42;
++  __builtin_abort ();
++}
++
++__attribute__((noinline, target("sign-return-address=none")))
++static void no_pac_ret (void)
++{
++  do_throw ();
++  __builtin_abort ();
++}
++
++int main ()
++{
++  try {
++    no_pac_ret ();
++  } catch (...) {
++    return 0;
++  }
++  __builtin_abort ();
++}
+diff --git a/gcc/testsuite/g++.target/aarch64/pr94515-1.C b/gcc/testsuite/g++.target/aarch64/pr94515-1.C
+new file mode 100644
+index 00000000000..3640347945a
+--- /dev/null
++++ b/gcc/testsuite/g++.target/aarch64/pr94515-1.C
+@@ -0,0 +1,44 @@
++/* PR target/94515. Check .cfi_window_save with multiple return paths.  */
++/* { dg-do run } */
++/* { dg-require-effective-target lp64 } */
++/* { dg-additional-options "-O2 --save-temps" } */
++
++volatile int zero = 0;
++
++__attribute__((noinline, target("sign-return-address=none")))
++void unwind (void)
++{
++  if (zero == 0)
++    throw 42;
++}
++
++__attribute__((noinline, noipa, target("sign-return-address=all")))
++int test (int z)
++{
++  if (z) {
++    asm volatile ("":::"x20","x21");
++    unwind ();
++    return 1;
++  } else {
++    unwind ();
++    return 2;
++  }
++}
++
++__attribute__((target("sign-return-address=none")))
++int main ()
++{
++  try {
++    test (zero);
++    __builtin_abort ();
++  } catch (...) {
++    return 0;
++  }
++  __builtin_abort ();
++}
++
++/* This check only works if there are two return paths in test and
++   cfi_window_save is used for both instead of cfi_remember_state
++   plus cfi_restore_state.  This is currently the case with -O2.  */
++
++/* { dg-final { scan-assembler-times {\t\.cfi_window_save\n} 4 } } */
+diff --git a/gcc/testsuite/g++.target/aarch64/pr94515-2.C b/gcc/testsuite/g++.target/aarch64/pr94515-2.C
+new file mode 100644
+index 00000000000..92e79831ff9
+--- /dev/null
++++ b/gcc/testsuite/g++.target/aarch64/pr94515-2.C
+@@ -0,0 +1,41 @@
++/* PR target/94515. Check .cfi_window_save with multiple return paths.  */
++/* { dg-do run } */
++/* { dg-require-effective-target lp64 } */
++/* { dg-additional-options "-O2 -msign-return-address=all" } */
++
++volatile int zero = 0;
++int global = 0;
++
++__attribute__((noinline))
++int bar(void)
++{
++  if (zero == 0) return 3;
++  return 0;
++}
++
++__attribute__((noinline, noreturn))
++void unwind (void)
++{
++  throw 42;
++}
++
++__attribute__((noinline, noipa))
++int test(int x)
++{
++  if (x==1) return 2; /* This return path may not use the stack.  */
++  int y = bar();
++  if (y > global) global=y;
++  if (y==3) unwind(); /* This return path must have RA mangle state set.  */
++  return 0;
++}
++
++int main ()
++{
++  try {
++    test (zero);
++    __builtin_abort ();
++  } catch (...) {
++    return 0;
++  }
++  __builtin_abort ();
++}
 diff --git a/gcc/testsuite/gcc.c-torture/compile/pr93949.c b/gcc/testsuite/gcc.c-torture/compile/pr93949.c
 new file mode 100644
 index 00000000000..bbda0209802
@@ -5548,6 +5798,89 @@ index 00000000000..5713c14d5f9
 +	}
 +      __sync_val_compare_and_swap (&g, -1, f);
 +    }
++}
+diff --git a/gcc/testsuite/gcc.target/aarch64/pr94514.c b/gcc/testsuite/gcc.target/aarch64/pr94514.c
+new file mode 100644
+index 00000000000..a6a0fb1adc8
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/aarch64/pr94514.c
+@@ -0,0 +1,77 @@
++/* PR target/94514. Unwind across mixed pac-ret and non-pac-ret frames.  */
++/* { dg-do run } */
++/* { dg-require-effective-target lp64 } */
++/* { dg-options "-fexceptions -O2" } */
++
++#include <unwind.h>
++#include <stdlib.h>
++#include <stdio.h>
++
++#define die() \
++  do { \
++    printf ("%s:%d: reached unexpectedly.\n", __FILE__, __LINE__); \
++    fflush (stdout); \
++    abort (); \
++  } while (0)
++
++static struct _Unwind_Exception exc;
++
++static _Unwind_Reason_Code
++force_unwind_stop (int version, _Unwind_Action actions,
++                   _Unwind_Exception_Class exc_class,
++                   struct _Unwind_Exception *exc_obj,
++                   struct _Unwind_Context *context,
++                   void *stop_parameter)
++{
++  printf ("%s: CFA: %p PC: %p actions: %d\n",
++	  __func__,
++	  (void *)_Unwind_GetCFA (context),
++	  (void *)_Unwind_GetIP (context),
++	  (int)actions);
++  if (actions & _UA_END_OF_STACK)
++    die ();
++  return _URC_NO_REASON;
++}
++
++static void force_unwind (void)
++{
++#ifndef __USING_SJLJ_EXCEPTIONS__
++  _Unwind_ForcedUnwind (&exc, force_unwind_stop, 0);
++#else
++  _Unwind_SjLj_ForcedUnwind (&exc, force_unwind_stop, 0);
++#endif
++}
++
++__attribute__((noinline, target("sign-return-address=all")))
++static void f2_pac_ret (void)
++{
++  force_unwind ();
++  die ();
++}
++
++__attribute__((noinline, target("sign-return-address=none")))
++static void f1_no_pac_ret (void)
++{
++  f2_pac_ret ();
++  die ();
++}
++
++__attribute__((noinline, target("sign-return-address=all")))
++static void f0_pac_ret (void)
++{
++  f1_no_pac_ret ();
++  die ();
++}
++
++static void cleanup_handler (void *p)
++{
++  printf ("%s: Success.\n", __func__);
++  exit (0);
++}
++
++int main ()
++{
++  char dummy __attribute__((cleanup (cleanup_handler)));
++  f0_pac_ret ();
++  die ();
 +}
 diff --git a/gcc/testsuite/gcc.target/aarch64/sync-comp-swap.c b/gcc/testsuite/gcc.target/aarch64/sync-comp-swap.c
 index e571b2f13b3..f56415f3354 100644
@@ -6775,10 +7108,19 @@ index 36d86f369fe..f8d678744db 100644
        asm volatile ("fdivs\t%1" : "+t" (f) : "m" (g));
        /* No need for fwait, exception is triggered by emitted fstp.  */
 diff --git a/libgcc/ChangeLog b/libgcc/ChangeLog
-index d0ac4295575..4942176b80b 100644
+index d0ac4295575..fff1a58e3db 100644
 --- a/libgcc/ChangeLog
 +++ b/libgcc/ChangeLog
-@@ -1,3 +1,64 @@
+@@ -1,3 +1,73 @@
++2020-05-14  Szabolcs Nagy  <szabolcs.nagy@arm.com>
++
++	Backport from mainline.
++	2020-04-21  Szabolcs Nagy  <szabolcs.nagy@arm.com>
++
++	PR target/94514
++	* config/aarch64/aarch64-unwind.h (aarch64_frob_update_context):
++	Update context->flags accroding to the frame state.
++
 +2020-04-16  Andre Vieira  <andre.simoesdiasvieira@arm.com>
 +
 +	Backport from mainline
@@ -6911,6 +7253,19 @@ index d634af9d949..5be5321d258 100644
  /* Number of bits in a file offset, on hosts where this is settable. */
  #undef _FILE_OFFSET_BITS
  
+diff --git a/libgcc/config/aarch64/aarch64-unwind.h b/libgcc/config/aarch64/aarch64-unwind.h
+index ff05226f49c..f3b4cfa3b8c 100644
+--- a/libgcc/config/aarch64/aarch64-unwind.h
++++ b/libgcc/config/aarch64/aarch64-unwind.h
+@@ -80,6 +80,8 @@ aarch64_frob_update_context (struct _Unwind_Context *context,
+   if (fs->regs.reg[DWARF_REGNUM_AARCH64_RA_STATE].loc.offset & 0x1)
+     /* The flag is used for re-authenticating EH handler's address.  */
+     context->flags |= RA_A_SIGNED_BIT;
++  else
++    context->flags &= ~RA_A_SIGNED_BIT;
+ 
+   return;
+ }
 diff --git a/libgcc/config/aarch64/lse-init.c b/libgcc/config/aarch64/lse-init.c
 new file mode 100644
 index 00000000000..1a8f4c55213
