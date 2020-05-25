@@ -47,7 +47,11 @@ Fritz Reese (2):
       Backport form master: Fix fortran/85982 ICE in resolve_component.
       Indicate backport in changelogs from last commit.
 
-GCC Administrator (77):
+GCC Administrator (81):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -126,13 +130,14 @@ GCC Administrator (77):
       Daily bump.
       Daily bump.
 
-H.J. Lu (6):
+H.J. Lu (7):
       i386: Properly pop restore token in signal frame
       lto: Also copy .note.gnu.property section
       x86: Insert ENDBR if function will be called indirectly
       x86: Restore the frame pointer in word_mode
       x86: Update GFNI check
       x86: Update VPCLMULQDQ check
+      x86: Handle -mavx512vpopcntdq for -march=native
 
 Iain Sandoe (1):
       Darwin: Fix i686 bootstrap when the assembler supports GOTOFF in data.
@@ -227,10 +232,16 @@ index a2f28f43be3..6da4de57dc6 100644
 -8.4.0
 +8.4.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 142499c563c..7a6c2ea8908 100644
+index 142499c563c..956ad8b39fe 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,499 @@
+@@ -1,3 +1,505 @@
++2020-05-24  H.J. Lu  <hongjiu.lu@intel.com>
++
++	PR target/95258
++	* config/i386/driver-i386.c (host_detect_local_cpu): Detect
++	AVX512VPOPCNTDQ.
++
 +2020-05-21  Martin Liska  <mliska@suse.cz>
 +
 +	* common/config/aarch64/aarch64-common.c (aarch64_handle_option):
@@ -2645,6 +2656,44 @@ index 2d0dc1f2605..3a844a55cd6 100644
  /* Darwin profiling -- call mcount.  */
  #undef FUNCTION_PROFILER
  #define FUNCTION_PROFILER(FILE, LABELNO)				\
+diff --git a/gcc/config/i386/driver-i386.c b/gcc/config/i386/driver-i386.c
+index 704cadd8fcf..97eaf68442d 100644
+--- a/gcc/config/i386/driver-i386.c
++++ b/gcc/config/i386/driver-i386.c
+@@ -420,6 +420,7 @@ const char *host_detect_local_cpu (int argc, const char **argv)
+   unsigned int has_avx5124fmaps = 0, has_avx5124vnniw = 0;
+   unsigned int has_gfni = 0, has_avx512vbmi2 = 0;
+   unsigned int has_avx512bitalg = 0;
++  unsigned int has_avx512vpopcntdq = 0;
+   unsigned int has_shstk = 0;
+   unsigned int has_avx512vnni = 0, has_vaes = 0;
+   unsigned int has_vpclmulqdq = 0;
+@@ -519,6 +520,7 @@ const char *host_detect_local_cpu (int argc, const char **argv)
+       has_vaes = ecx & bit_VAES;
+       has_vpclmulqdq = ecx & bit_VPCLMULQDQ;
+       has_avx512bitalg = ecx & bit_AVX512BITALG;
++      has_avx512vpopcntdq = ecx & bit_AVX512VPOPCNTDQ;
+       has_movdiri = ecx & bit_MOVDIRI;
+       has_movdir64b = ecx & bit_MOVDIR64B;
+ 
+@@ -1098,6 +1100,7 @@ const char *host_detect_local_cpu (int argc, const char **argv)
+       const char *vaes = has_vaes ? " -mvaes" : " -mno-vaes";
+       const char *vpclmulqdq = has_vpclmulqdq ? " -mvpclmulqdq" : " -mno-vpclmulqdq";
+       const char *avx512bitalg = has_avx512bitalg ? " -mavx512bitalg" : " -mno-avx512bitalg";
++      const char *avx512vpopcntdq = has_avx512vpopcntdq ? " -mavx512vpopcntdq" : " -mno-avx512vpopcntdq";
+       const char *movdiri = has_movdiri ? " -mmovdiri" : " -mno-movdiri";
+       const char *movdir64b = has_movdir64b ? " -mmovdir64b" : " -mno-movdir64b";
+       options = concat (options, mmx, mmx3dnow, sse, sse2, sse3, ssse3,
+@@ -1112,7 +1115,8 @@ const char *host_detect_local_cpu (int argc, const char **argv)
+ 			avx512ifma, avx512vbmi, avx5124fmaps, avx5124vnniw,
+ 			clwb, mwaitx, clzero, pku, rdpid, gfni, shstk,
+ 			avx512vbmi2, avx512vnni, vaes, vpclmulqdq,
+-			avx512bitalg, movdiri, movdir64b, NULL);
++			avx512bitalg, avx512vpopcntdq, movdiri, movdir64b,
++			NULL);
+     }
+ 
+ done:
 diff --git a/gcc/config/i386/i386-builtin.def b/gcc/config/i386/i386-builtin.def
 index fe23ab0b829..35bd8add04a 100644
 --- a/gcc/config/i386/i386-builtin.def
