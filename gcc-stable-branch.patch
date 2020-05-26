@@ -47,7 +47,8 @@ Fritz Reese (2):
       Backport form master: Fix fortran/85982 ICE in resolve_component.
       Indicate backport in changelogs from last commit.
 
-GCC Administrator (81):
+GCC Administrator (82):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -149,12 +150,15 @@ Jakub Jelinek (5):
       backport: re PR fortran/92775 (Incorrect expression in DW_AT_byte_stride on an array)
       i386: Fix emit_reduc_half on V{64Q,32H}Imode [PR94500]
 
-Jason Merrill (5):
+Jason Merrill (8):
       c++: Fix CTAD with multiple-arg ctor template [93248].
       c++: Fix ICE-after-error on partial spec [92068]
       c++: Find parameter pack in typedef in lambda [92909].
       c++: alias template and parameter packs (PR91966).
       c++: Mangling of dependent conversions [PR91377]
+      c++: generic lambda and -fsanitize=vla-bound [PR93822]
+      c++: -fmerge-all-constants vs. destructors [PR91529]
+      c++: Local class DMI using local static [PR90749]
 
 John David Anglin (1):
       Define __BIG_ENDIAN__
@@ -179,11 +183,12 @@ Martin Jambor (2):
       gcc-8 sra: Cap number of sub-access propagations with a param (PR 93435)
       sra-8: Fix sra_modify_expr handling of partial writes (PR 94482)
 
-Martin Liska (4):
+Martin Liska (5):
       Backport 9297e013293e4d332fc7c40859ea4dd9616e0d88
       Backport 55a7380213a5c16120d5c674fb42b38a3d796b57
       Add outline-atomics to target attribute.
       Fix backport due to usage for x_target_flags.
+      Add missing ChangeLog entries.
 
 Max Filippov (2):
       xtensa: backport fix for PR target/91880
@@ -3256,10 +3261,27 @@ index 209f839cfb0..9b911e30900 100644
     (set_attr "mode"	"SI")
     (set_attr "length"	"3,3")])
 diff --git a/gcc/cp/ChangeLog b/gcc/cp/ChangeLog
-index a525d4f4f9e..ebebbe29e38 100644
+index a525d4f4f9e..311cc43936d 100644
 --- a/gcc/cp/ChangeLog
 +++ b/gcc/cp/ChangeLog
-@@ -1,3 +1,45 @@
+@@ -1,3 +1,62 @@
++2020-05-25  Jason Merrill  <jason@redhat.com>
++
++	PR c++/90749
++	* init.c (get_nsdmi): Don't push_to_top_level for a local class.
++
++2020-05-25  Jason Merrill  <jason@redhat.com>
++
++	PR c++/91529
++	* decl.c (cp_finish_decl): Also clear TREE_READONLY if
++	-fmerge-all-constants.
++
++2020-05-25  Jason Merrill  <jason@redhat.com>
++
++	PR c++/93822
++	* pt.c (tsubst_decl): Make sure DECL_VALUE_EXPR continues to have
++	the same type as the variable.
++
 +2020-05-04  Marek Polacek  <polacek@redhat.com>
 +
 +	Backported from mainline
@@ -3320,6 +3342,48 @@ index bebe72e4db9..f68ad758a14 100644
  }
  
  /* Callback for walk_tree used by unshare_constructor.  */
+diff --git a/gcc/cp/decl.c b/gcc/cp/decl.c
+index 5642791446f..f2b52fb674e 100644
+--- a/gcc/cp/decl.c
++++ b/gcc/cp/decl.c
+@@ -7250,7 +7250,10 @@ cp_finish_decl (tree decl, tree init, bool init_const_expr_p,
+       /* This needs to happen after the linkage is set. */
+       determine_visibility (decl);
+ 
+-      if (var_definition_p && TREE_STATIC (decl))
++      if (var_definition_p
++	  /* With -fmerge-all-constants, gimplify_init_constructor
++	     might add TREE_STATIC to the variable.  */
++	  && (TREE_STATIC (decl) || flag_merge_constants >= 2))
+ 	{
+ 	  /* If a TREE_READONLY variable needs initialization
+ 	     at runtime, it is no longer readonly and we need to
+diff --git a/gcc/cp/init.c b/gcc/cp/init.c
+index 1a2a1f58819..7bd3f0e548b 100644
+--- a/gcc/cp/init.c
++++ b/gcc/cp/init.c
+@@ -587,16 +587,18 @@ get_nsdmi (tree member, bool in_ctor, tsubst_flags_t complain)
+ 	  DECL_INSTANTIATING_NSDMI_P (member) = 1;
+ 
+ 	  bool pushed = false;
+-	  if (!currently_open_class (DECL_CONTEXT (member)))
++	  tree ctx = DECL_CONTEXT (member);
++	  if (!currently_open_class (ctx)
++	      && !LOCAL_CLASS_P (ctx))
+ 	    {
+ 	      push_to_top_level ();
+-	      push_nested_class (DECL_CONTEXT (member));
++	      push_nested_class (ctx);
+ 	      pushed = true;
+ 	    }
+ 
+ 	  gcc_checking_assert (!processing_template_decl);
+ 
+-	  inject_this_parameter (DECL_CONTEXT (member), TYPE_UNQUALIFIED);
++	  inject_this_parameter (ctx, TYPE_UNQUALIFIED);
+ 
+ 	  start_lambda_scope (member);
+ 
 diff --git a/gcc/cp/mangle.c b/gcc/cp/mangle.c
 index ac90e47fc94..a95eab4ba69 100644
 --- a/gcc/cp/mangle.c
@@ -3347,7 +3411,7 @@ index 3f8e4a0e3a8..f61e748e748 100644
  
    /* An anonymous namespace has a NULL DECL_NAME, but we still want to
 diff --git a/gcc/cp/pt.c b/gcc/cp/pt.c
-index 409e86166c1..4673c27468e 100644
+index 409e86166c1..2d38310f1fb 100644
 --- a/gcc/cp/pt.c
 +++ b/gcc/cp/pt.c
 @@ -3814,10 +3814,18 @@ find_parameter_packs_r (tree *tp, int *walk_subtrees, void* data)
@@ -3441,7 +3505,30 @@ index 409e86166c1..4673c27468e 100644
    for (int i = 0; i < len; ++i)
      if (!data.seen[i])
        return true;
-@@ -26520,10 +26564,13 @@ build_deduction_guide (tree ctor, tree outer_args, tsubst_flags_t complain)
+@@ -13773,6 +13817,11 @@ tsubst_decl (tree t, tree args, tsubst_flags_t complain)
+ 	    if (DECL_HAS_VALUE_EXPR_P (t))
+ 	      {
+ 		tree ve = DECL_VALUE_EXPR (t);
++		/* If the DECL_VALUE_EXPR is converted to the declared type,
++		   preserve the identity so that gimplify_type_sizes works.  */
++		bool nop = (TREE_CODE (ve) == NOP_EXPR);
++		if (nop)
++		  ve = TREE_OPERAND (ve, 0);
+ 		ve = tsubst_expr (ve, args, complain, in_decl,
+ 				  /*constant_expression_p=*/false);
+ 		if (REFERENCE_REF_P (ve))
+@@ -13780,6 +13829,10 @@ tsubst_decl (tree t, tree args, tsubst_flags_t complain)
+ 		    gcc_assert (TREE_CODE (type) == REFERENCE_TYPE);
+ 		    ve = TREE_OPERAND (ve, 0);
+ 		  }
++		if (nop)
++		  ve = build_nop (type, ve);
++		else
++		  gcc_checking_assert (TREE_TYPE (ve) == type);
+ 		SET_DECL_VALUE_EXPR (r, ve);
+ 	      }
+ 	    if (CP_DECL_THREAD_LOCAL_P (r)
+@@ -26520,10 +26573,13 @@ build_deduction_guide (tree ctor, tree outer_args, tsubst_flags_t complain)
  				     complain, ctor);
  	  if (fparms == error_mark_node)
  	    ok = false;
@@ -4335,10 +4422,20 @@ index d9c66d42c26..0aa78a31411 100644
  extern void mark_end_of_function_resources (rtx, bool);
  extern void init_resource_info (rtx_insn *);
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index ab652ddc144..8898202f114 100644
+index ab652ddc144..66d288eaddd 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,278 @@
+@@ -1,3 +1,288 @@
++2020-05-25  Jason Merrill  <jason@redhat.com>
++
++	PR c++/90749
++	* g++.dg/cpp0x/nsdmi-template20.C: New file.
++
++2020-05-25  Jason Merrill  <jason@redhat.com>
++
++	PR c++/91529
++	* g++.dg/init/const14.C: New file.
++
 +2020-05-21  Martin Liska  <mliska@suse.cz>
 +
 +	* gcc.target/aarch64/target_attr_20.c: New test.
@@ -4666,6 +4763,25 @@ index 00000000000..052283e6caa
 +    }();			// { dg-error "not expanded" }
 +}
 +template void foo<>();
+diff --git a/gcc/testsuite/g++.dg/cpp0x/nsdmi-template20.C b/gcc/testsuite/g++.dg/cpp0x/nsdmi-template20.C
+new file mode 100644
+index 00000000000..06448d92f12
+--- /dev/null
++++ b/gcc/testsuite/g++.dg/cpp0x/nsdmi-template20.C
+@@ -0,0 +1,13 @@
++// PR c++/90479
++// { dg-do compile { target c++11 } }
++
++template <int n>
++void foo ()
++{
++  static int i {100};
++  struct { int a {i++}; } b {};
++}
++int main ()
++{
++  foo<0> ();
++}
 diff --git a/gcc/testsuite/g++.dg/cpp0x/variadic-alias2.C b/gcc/testsuite/g++.dg/cpp0x/variadic-alias2.C
 new file mode 100644
 index 00000000000..ab64866d35f
@@ -4799,6 +4915,26 @@ index 00000000000..2fc71de8d95
 +template <typename T> struct S
 +{ template <typename V> S (T, V, long = 0); };
 +using U = decltype(S{0, 4u});
+diff --git a/gcc/testsuite/g++.dg/init/const14.C b/gcc/testsuite/g++.dg/init/const14.C
+new file mode 100644
+index 00000000000..f29c7e58cfc
+--- /dev/null
++++ b/gcc/testsuite/g++.dg/init/const14.C
+@@ -0,0 +1,14 @@
++// PR c++/91529
++// { dg-do run }
++// { dg-additional-options -fmerge-all-constants }
++
++struct A
++{
++  int i[2];
++  ~A() { i[0] = 0; }
++};
++
++int main()
++{
++  const A a = { 1,2 };
++}
 diff --git a/gcc/testsuite/g++.dg/lookup/pr84733.C b/gcc/testsuite/g++.dg/lookup/pr84733.C
 new file mode 100644
 index 00000000000..d0394eab891
