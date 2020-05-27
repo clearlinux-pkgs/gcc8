@@ -47,7 +47,8 @@ Fritz Reese (2):
       Backport form master: Fix fortran/85982 ICE in resolve_component.
       Indicate backport in changelogs from last commit.
 
-GCC Administrator (82):
+GCC Administrator (83):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -183,12 +184,13 @@ Martin Jambor (2):
       gcc-8 sra: Cap number of sub-access propagations with a param (PR 93435)
       sra-8: Fix sra_modify_expr handling of partial writes (PR 94482)
 
-Martin Liska (5):
+Martin Liska (6):
       Backport 9297e013293e4d332fc7c40859ea4dd9616e0d88
       Backport 55a7380213a5c16120d5c674fb42b38a3d796b57
       Add outline-atomics to target attribute.
       Fix backport due to usage for x_target_flags.
       Add missing ChangeLog entries.
+      Add new git-backport.py script.
 
 Max Filippov (2):
       xtensa: backport fix for PR target/91880
@@ -229,6 +231,72 @@ Uros Bizjak (3):
 Will Schmidt (1):
       rs6000 pragma fix backport from mainline to gcc-8
 
+diff --git a/contrib/git-backport.py b/contrib/git-backport.py
+new file mode 100755
+index 00000000000..6a115c34d40
+--- /dev/null
++++ b/contrib/git-backport.py
+@@ -0,0 +1,60 @@
++#!/usr/bin/env python3
++
++# Copyright (C) 2020 Free Software Foundation, Inc.
++#
++# This file is part of GCC.
++#
++# GCC is free software; you can redistribute it and/or modify
++# it under the terms of the GNU General Public License as published by
++# the Free Software Foundation; either version 3, or (at your option)
++# any later version.
++#
++# GCC is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with GCC; see the file COPYING.  If not, write to
++# the Free Software Foundation, 51 Franklin Street, Fifth Floor,
++# Boston, MA 02110-1301, USA.
++
++import argparse
++import subprocess
++
++if __name__ == '__main__':
++    parser = argparse.ArgumentParser(description='Backport a git revision and '
++                                     'stash all ChangeLog files.')
++    parser.add_argument('revision', help='Revision')
++    args = parser.parse_args()
++
++    r = subprocess.run('git cherry-pick -x %s' % args.revision, shell=True)
++    if r.returncode == 0:
++        cmd = 'git show --name-only --pretty="" -- "*ChangeLog" |' \
++              'xargs git checkout HEAD~'
++        subprocess.check_output(cmd, shell=True)
++        subprocess.check_output('git commit --amend --no-edit', shell=True)
++    else:
++        # 1) remove all ChangeLog files from conflicts
++        out = subprocess.check_output('git diff --name-only --diff-filter=U',
++                                      shell=True,
++                                      encoding='utf8')
++        conflicts = out.strip().split('\n')
++        changelogs = [c for c in conflicts if c.endswith('ChangeLog')]
++        if changelogs:
++            cmd = 'git checkout --theirs %s' % '\n'.join(changelogs)
++            subprocess.check_output(cmd, shell=True)
++        # 2) remove all ChangeLog files from index
++        cmd = 'git diff --name-only --diff-filter=M HEAD'
++        out = subprocess.check_output(cmd, shell=True, encoding='utf8')
++        out = out.strip().split('\n')
++        modified = [c for c in out if c.endswith('ChangeLog')]
++        for m in modified:
++            subprocess.check_output('git reset %s' % m, shell=True)
++            subprocess.check_output('git checkout %s' % m, shell=True)
++
++        # try to continue
++        if len(conflicts) == len(changelogs):
++            subprocess.check_output('git cherry-pick --continue', shell=True)
++        else:
++            print('Please resolve all remaining file conflicts.')
 diff --git a/gcc/BASE-VER b/gcc/BASE-VER
 index a2f28f43be3..6da4de57dc6 100644
 --- a/gcc/BASE-VER
