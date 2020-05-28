@@ -47,7 +47,8 @@ Fritz Reese (2):
       Backport form master: Fix fortran/85982 ICE in resolve_component.
       Indicate backport in changelogs from last commit.
 
-GCC Administrator (83):
+GCC Administrator (84):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -174,11 +175,12 @@ Jonathan Wakely (5):
 Marek Polacek (1):
       c++: Bogus error with alignof [PR90736]
 
-Mark Eggleston (4):
+Mark Eggleston (5):
       fortran: ICE using undeclared symbol in array constructor PR93484
       fortran: ICE equivalence with an element of an array PR94030
       Fortran : Spurious warning message with -Wsurprising PR59107
       Fortran  : ProcPtr function results: 'ppr@' in error message PR39695
+      Fortran  : ICE in gfc_trans_label_assign PR50392
 
 Martin Jambor (2):
       gcc-8 sra: Cap number of sub-access propagations with a param (PR 93435)
@@ -231,6 +233,18 @@ Uros Bizjak (3):
 Will Schmidt (1):
       rs6000 pragma fix backport from mainline to gcc-8
 
+diff --git a/contrib/ChangeLog b/contrib/ChangeLog
+index e6dc6514fbe..2315d51a89e 100644
+--- a/contrib/ChangeLog
++++ b/contrib/ChangeLog
+@@ -1,3 +1,7 @@
++2020-05-27  Martin Liska  <mliska@suse.cz>
++
++	* git-backport.py: New file.
++
+ 2020-03-04  Release Manager
+ 
+ 	* GCC 8.4.0 released.
 diff --git a/contrib/git-backport.py b/contrib/git-backport.py
 new file mode 100755
 index 00000000000..6a115c34d40
@@ -4129,10 +4143,42 @@ index 5ef86565d8d..284f1791233 100644
  tree gfc_conv_descriptor_data_get (tree);
  tree gfc_conv_descriptor_data_addr (tree);
 diff --git a/gcc/fortran/trans-decl.c b/gcc/fortran/trans-decl.c
-index 2dc350fbb5a..30ed449e12f 100644
+index 2dc350fbb5a..3780d27a9f6 100644
 --- a/gcc/fortran/trans-decl.c
 +++ b/gcc/fortran/trans-decl.c
-@@ -5873,7 +5873,7 @@ generate_local_decl (gfc_symbol * sym)
+@@ -1673,9 +1673,7 @@ gfc_get_symbol_decl (gfc_symbol * sym)
+ 
+       TREE_USED (sym->backend_decl) = 1;
+       if (sym->attr.assign && GFC_DECL_ASSIGN (sym->backend_decl) == 0)
+-	{
+-	  gfc_add_assign_aux_vars (sym);
+-	}
++	gfc_add_assign_aux_vars (sym);
+ 
+       if ((sym->attr.dimension || IS_CLASS_ARRAY (sym))
+ 	  && DECL_LANG_SPECIFIC (sym->backend_decl)
+@@ -1689,6 +1687,10 @@ gfc_get_symbol_decl (gfc_symbol * sym)
+      return sym->backend_decl;
+     }
+ 
++  if (sym->result == sym && sym->attr.assign
++      && GFC_DECL_ASSIGN (sym->backend_decl) == 0)
++    gfc_add_assign_aux_vars (sym);
++
+   if (sym->backend_decl)
+     return sym->backend_decl;
+ 
+@@ -3142,6 +3144,9 @@ gfc_get_fake_result_decl (gfc_symbol * sym, int parent_flag)
+   else
+     current_fake_result_decl = build_tree_list (NULL, decl);
+ 
++  if (sym->attr.assign)
++    DECL_LANG_SPECIFIC (decl) = DECL_LANG_SPECIFIC (sym->backend_decl);
++
+   return decl;
+ }
+ 
+@@ -5873,7 +5878,7 @@ generate_local_decl (gfc_symbol * sym)
        /* Unused procedure passed as dummy argument.  */
        if (sym->attr.flavor == FL_PROCEDURE)
  	{
@@ -7275,6 +7321,24 @@ index 00000000000..ecb0a43929f
 +  pointer g
 +  real g   ! { dg-error "Symbol 'g' at .1. already has basic type of INTEGER" }
 +end function
++
+diff --git a/gcc/testsuite/gfortran.dg/pr50392.f b/gcc/testsuite/gfortran.dg/pr50392.f
+new file mode 100644
+index 00000000000..2cb883e41a3
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/pr50392.f
+@@ -0,0 +1,12 @@
++! { dg-do compile }
++! 
++      function kf()
++      integer kf
++      assign 1 to kf ! { dg-warning "Deleted feature: ASSIGN statement at" }
++      kf = 2
++      goto kf ! { dg-warning "Deleted feature: Assigned GOTO statement at" }
++      kf = 1
++ 1    continue
++      kf = 0
++      end
 +
 diff --git a/gcc/testsuite/gfortran.dg/pr59107.f90 b/gcc/testsuite/gfortran.dg/pr59107.f90
 new file mode 100644
