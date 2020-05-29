@@ -1,3 +1,6 @@
+Alex Coplan (1):
+      aarch64: PR target/94591: Don't generate invalid REV64 insns
+
 Andre Vieira (21):
       aarch64: Add early clobber for aarch64_store_exclusive.
       aarch64: Simplify LSE cas generation
@@ -47,7 +50,8 @@ Fritz Reese (2):
       Backport form master: Fix fortran/85982 ICE in resolve_component.
       Indicate backport in changelogs from last commit.
 
-GCC Administrator (84):
+GCC Administrator (85):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -172,6 +176,9 @@ Jonathan Wakely (5):
       libstdc++: Fix broken link to SGI STL FAQ
       libstdc++: Replace pre-release version number in docs
 
+Kyrylo Tkachov (1):
+      [AArch64] Use __getauxval instead of getauxval in LSE detection code in libgcc
+
 Marek Polacek (1):
       c++: Bogus error with alignof [PR90736]
 
@@ -186,13 +193,15 @@ Martin Jambor (2):
       gcc-8 sra: Cap number of sub-access propagations with a param (PR 93435)
       sra-8: Fix sra_modify_expr handling of partial writes (PR 94482)
 
-Martin Liska (6):
+Martin Liska (8):
       Backport 9297e013293e4d332fc7c40859ea4dd9616e0d88
       Backport 55a7380213a5c16120d5c674fb42b38a3d796b57
       Add outline-atomics to target attribute.
       Fix backport due to usage for x_target_flags.
       Add missing ChangeLog entries.
       Add new git-backport.py script.
+      Fix various limitations of git-backport.py.
+      gcov-tool: Flexible endian adjustment for merging coverage data
 
 Max Filippov (2):
       xtensa: backport fix for PR target/91880
@@ -247,10 +256,10 @@ index e6dc6514fbe..2315d51a89e 100644
  	* GCC 8.4.0 released.
 diff --git a/contrib/git-backport.py b/contrib/git-backport.py
 new file mode 100755
-index 00000000000..6a115c34d40
+index 00000000000..3a9413dcd27
 --- /dev/null
 +++ b/contrib/git-backport.py
-@@ -0,0 +1,60 @@
+@@ -0,0 +1,65 @@
 +#!/usr/bin/env python3
 +
 +# Copyright (C) 2020 Free Software Foundation, Inc.
@@ -283,9 +292,13 @@ index 00000000000..6a115c34d40
 +
 +    r = subprocess.run('git cherry-pick -x %s' % args.revision, shell=True)
 +    if r.returncode == 0:
-+        cmd = 'git show --name-only --pretty="" -- "*ChangeLog" |' \
-+              'xargs git checkout HEAD~'
-+        subprocess.check_output(cmd, shell=True)
++        cmd = 'git show --name-only --pretty="" -- "*ChangeLog"'
++        changelogs = subprocess.check_output(cmd, shell=True, encoding='utf8')
++        changelogs = changelogs.strip()
++        if changelogs:
++            for changelog in changelogs.split('\n'):
++                subprocess.check_output('git checkout HEAD~ %s' % changelog,
++                                        shell=True)
 +        subprocess.check_output('git commit --amend --no-edit', shell=True)
 +    else:
 +        # 1) remove all ChangeLog files from conflicts
@@ -308,7 +321,8 @@ index 00000000000..6a115c34d40
 +
 +        # try to continue
 +        if len(conflicts) == len(changelogs):
-+            subprocess.check_output('git cherry-pick --continue', shell=True)
++            cmd = 'git -c core.editor=true cherry-pick --continue'
++            subprocess.check_output(cmd, shell=True)
 +        else:
 +            print('Please resolve all remaining file conflicts.')
 diff --git a/gcc/BASE-VER b/gcc/BASE-VER
@@ -960,7 +974,7 @@ index 1154fc3d58d..da664fc5d29 100644
  
  (define_insn "*aarch64_mov<mode>"
 diff --git a/gcc/config/aarch64/aarch64.c b/gcc/config/aarch64/aarch64.c
-index 20761578fb6..ad339ab1d54 100644
+index 20761578fb6..14ed69f460d 100644
 --- a/gcc/config/aarch64/aarch64.c
 +++ b/gcc/config/aarch64/aarch64.c
 @@ -1369,10 +1369,14 @@ aarch64_hard_regno_mode_ok (unsigned regno, machine_mode mode)
@@ -1828,6 +1842,16 @@ index 20761578fb6..ad339ab1d54 100644
  /* Split an atomic operation.  */
  
  void
+@@ -15435,7 +15294,8 @@ aarch64_evpc_rev_local (struct expand_vec_perm_d *d)
+ 
+   if (d->vec_flags == VEC_SVE_PRED
+       || !d->one_vector_p
+-      || !d->perm[0].is_constant (&diff))
++      || !d->perm[0].is_constant (&diff)
++      || !diff)
+     return false;
+ 
+   size = (diff + 1) * GET_MODE_UNIT_SIZE (d->vmode);
 diff --git a/gcc/config/aarch64/aarch64.opt b/gcc/config/aarch64/aarch64.opt
 index 52eaf8c6f40..b4970b73607 100644
 --- a/gcc/config/aarch64/aarch64.opt
@@ -3776,10 +3800,20 @@ index bed6c981852..d496f57547a 100644
  
  /* Examine CFI and return true if a cfi label and set_loc is needed
 diff --git a/gcc/fortran/ChangeLog b/gcc/fortran/ChangeLog
-index d3be7538ff7..b1490c06f41 100644
+index d3be7538ff7..240c28bfbd8 100644
 --- a/gcc/fortran/ChangeLog
 +++ b/gcc/fortran/ChangeLog
-@@ -1,3 +1,99 @@
+@@ -1,3 +1,109 @@
++2020-05-28  Tobias Burnus  <tobias@codesourcery.com>
++	    Mark Eggleston  <markeggleston@gnu.gcc.org>
++
++	PR fortran/50392
++	* trans-decl.c (gfc_get_symbol_decl): Remove unnecessary block
++	delimiters.  Add auxiliary variables if a label is assigned to
++	a return variable. (gfc_gat_fake_result): If the symbol has an
++	assign attribute set declaration from the symbol's backend
++	declaration.
++
 +2020-05-20  Mark Eggleston  <markeggleston@gcc.gnu.org>
 +
 +	Backport from master
@@ -4254,6 +4288,58 @@ index 103ad6787ad..78b3d7db764 100644
  #define GFC_TYPE_ARRAY_BASE_DECL(node, internal) \
    (TYPE_LANG_SPECIFIC(node)->base_decl[(internal)])
  
+diff --git a/gcc/gcov-io.c b/gcc/gcov-io.c
+index 3fe1e613ebc..56d8e41fbca 100644
+--- a/gcc/gcov-io.c
++++ b/gcc/gcov-io.c
+@@ -48,6 +48,7 @@ struct gcov_var
+   unsigned overread;		/* Number of words overread.  */
+   int error;			/* < 0 overflow, > 0 disk error.  */
+   int mode;	                /* < 0 writing, > 0 reading */
++  int endian;			/* Swap endianness.  */
+ #if IN_LIBGCOV
+   /* Holds one block plus 4 bytes, thus all coverage reads & writes
+      fit within this buffer and we always can transfer GCOV_BLOCK_SIZE
+@@ -55,7 +56,6 @@ struct gcov_var
+      or 8 byte objects.  */
+   gcov_unsigned_t buffer[GCOV_BLOCK_SIZE + 1];
+ #else
+-  int endian;			/* Swap endianness.  */
+   /* Holds a variable length block, as the compiler can write
+      strings and needs to backtrack.  */
+   size_t alloc;
+@@ -100,7 +100,7 @@ gcov_rewrite (void)
+ 
+ static inline gcov_unsigned_t from_file (gcov_unsigned_t value)
+ {
+-#if !IN_LIBGCOV
++#if !IN_LIBGCOV || defined (IN_GCOV_TOOL)
+   if (gcov_var.endian)
+     {
+       value = (value >> 16) | (value << 16);
+@@ -222,7 +222,7 @@ gcov_close (void)
+   return gcov_var.error;
+ }
+ 
+-#if !IN_LIBGCOV
++#if !IN_LIBGCOV || defined (IN_GCOV_TOOL)
+ /* Check if MAGIC is EXPECTED. Use it to determine endianness of the
+    file. Returns +1 for same endian, -1 for other endian and zero for
+    not EXPECTED.  */
+diff --git a/gcc/gcov-io.h b/gcc/gcov-io.h
+index d6389c48908..b239651f1fe 100644
+--- a/gcc/gcov-io.h
++++ b/gcc/gcov-io.h
+@@ -370,6 +370,9 @@ struct gcov_summary
+ 
+ #if !IN_LIBGCOV
+ GCOV_LINKAGE int gcov_open (const char */*name*/, int /*direction*/);
++#endif
++
++#if !IN_LIBGCOV || defined (IN_GCOV_TOOL)
+ GCOV_LINKAGE int gcov_magic (gcov_unsigned_t, gcov_unsigned_t);
+ #endif
+ 
 diff --git a/gcc/gcov.c b/gcc/gcov.c
 index a99802079dc..565530d4f73 100644
 --- a/gcc/gcov.c
@@ -4536,10 +4622,15 @@ index d9c66d42c26..0aa78a31411 100644
  extern void mark_end_of_function_resources (rtx, bool);
  extern void init_resource_info (rtx_insn *);
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index ab652ddc144..66d288eaddd 100644
+index ab652ddc144..aadf5071c29 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,288 @@
+@@ -1,3 +1,293 @@
++2020-05-28  Tobias Burnus  <tobias@codesourcery.com>
++
++	PR fortran/50392
++	* gfortran.dg/pr50392.f: New test.
++
 +2020-05-25  Jason Merrill  <jason@redhat.com>
 +
 +	PR c++/90749
@@ -5496,6 +5587,44 @@ index 00000000000..bbda0209802
 +foo (void)
 +{
 +  register const double d[3] = { 0., 1., 2. };
++}
+diff --git a/gcc/testsuite/gcc.c-torture/execute/pr94591.c b/gcc/testsuite/gcc.c-torture/execute/pr94591.c
+new file mode 100644
+index 00000000000..42271ad8bce
+--- /dev/null
++++ b/gcc/testsuite/gcc.c-torture/execute/pr94591.c
+@@ -0,0 +1,32 @@
++typedef unsigned __attribute__((__vector_size__(8))) V2SI_u;
++typedef int __attribute__((__vector_size__(8))) V2SI_d;
++
++typedef unsigned long __attribute__((__vector_size__(16))) V2DI_u;
++typedef long __attribute__((__vector_size__(16))) V2DI_d;
++
++void id_V2SI(V2SI_d *v)
++{
++  *v = __builtin_shuffle(*v, (V2SI_d)(V2SI_u) { 0, 1 });
++}
++
++void id_V2DI(V2DI_d *v)
++{
++  *v = __builtin_shuffle(*v, (V2DI_d)(V2DI_u) { 0, 1 });
++}
++
++extern void abort(void);
++
++int main(void)
++{
++  V2SI_d si = { 35, 42 };
++  id_V2SI(&si);
++
++  if (si[0] != 35 || si[1] != 42)
++    abort();
++
++  V2DI_d di = { 63, 38 };
++  id_V2DI(&di);
++
++  if (di[0] != 63 || di[1] != 38)
++    abort();
 +}
 diff --git a/gcc/testsuite/gcc.dg/pr94368.c b/gcc/testsuite/gcc.dg/pr94368.c
 new file mode 100644
@@ -7899,10 +8028,10 @@ index ff05226f49c..f3b4cfa3b8c 100644
  }
 diff --git a/libgcc/config/aarch64/lse-init.c b/libgcc/config/aarch64/lse-init.c
 new file mode 100644
-index 00000000000..1a8f4c55213
+index 00000000000..2f2921349e7
 --- /dev/null
 +++ b/libgcc/config/aarch64/lse-init.c
-@@ -0,0 +1,47 @@
+@@ -0,0 +1,48 @@
 +/* Out-of-line LSE atomics for AArch64 architecture, Init.
 +   Copyright (C) 2019 Free Software Foundation, Inc.
 +   Contributed by Linaro Ltd.
@@ -7934,22 +8063,23 @@ index 00000000000..1a8f4c55213
 +_Bool __aarch64_have_lse_atomics
 +  __attribute__((visibility("hidden"), nocommon));
 +
-+/* Disable initialization of __aarch64_have_lse_atomics during bootstrap.  */
-+#if !defined(inhibit_libc) && defined(HAVE_SYS_AUXV_H)
-+# include <sys/auxv.h>
++/* Gate availability of __getauxval on glibc.  All AArch64-supporting glibc
++   versions support it.  */
++#ifdef __gnu_linux__
 +
-+/* Disable initialization if the system headers are too old.  */
-+# if defined(AT_HWCAP) && defined(HWCAP_ATOMICS)
++# define AT_HWCAP	16
++# define HWCAP_ATOMICS	(1 << 8)
++
++unsigned long int __getauxval (unsigned long int);
 +
 +static void __attribute__((constructor))
 +init_have_lse_atomics (void)
 +{
-+  unsigned long hwcap = getauxval (AT_HWCAP);
++  unsigned long hwcap = __getauxval (AT_HWCAP);
 +  __aarch64_have_lse_atomics = (hwcap & HWCAP_ATOMICS) != 0;
 +}
 +
-+# endif /* HWCAP */
-+#endif /* inhibit_libc */
++#endif /* __gnu_linux__  */
 diff --git a/libgcc/config/aarch64/lse.S b/libgcc/config/aarch64/lse.S
 new file mode 100644
 index 00000000000..f7f1c19587b
@@ -8591,6 +8721,42 @@ index b59aa746afc..5f0a63ce2f0 100644
  dnl Check if as supports RTM instructions.
  AC_CACHE_CHECK(for init priority support, libgcc_cv_init_priority, [
  AC_COMPILE_IFELSE([AC_LANG_PROGRAM(,
+diff --git a/libgcc/libgcov-util.c b/libgcc/libgcov-util.c
+index 9cf56a82859..9ff973cd488 100644
+--- a/libgcc/libgcov-util.c
++++ b/libgcc/libgcov-util.c
+@@ -259,7 +259,7 @@ read_gcda_file (const char *filename)
+ {
+   unsigned tags[4];
+   unsigned depth = 0;
+-  unsigned magic, version;
++  unsigned version;
+   struct gcov_info *obj_info;
+   int i;
+ 
+@@ -274,8 +274,7 @@ read_gcda_file (const char *filename)
+     }
+ 
+   /* Read magic.  */
+-  magic = gcov_read_unsigned ();
+-  if (magic != GCOV_DATA_MAGIC)
++  if (!gcov_magic (gcov_read_unsigned (), GCOV_DATA_MAGIC))
+     {
+       fnotice (stderr, "%s:not a gcov data file\n", filename);
+       gcov_close ();
+diff --git a/libgcc/libgcov.h b/libgcc/libgcov.h
+index 21422873cf2..ded98862797 100644
+--- a/libgcc/libgcov.h
++++ b/libgcc/libgcov.h
+@@ -149,7 +149,7 @@ extern struct gcov_info *gcov_list;
+ 
+ /* Poison these, so they don't accidentally slip in.  */
+ #pragma GCC poison gcov_write_string gcov_write_tag gcov_write_length
+-#pragma GCC poison gcov_time gcov_magic
++#pragma GCC poison gcov_time
+ 
+ #ifdef HAVE_GAS_HIDDEN
+ #define ATTRIBUTE_HIDDEN  __attribute__ ((__visibility__ ("hidden")))
 diff --git a/libgfortran/ChangeLog b/libgfortran/ChangeLog
 index 60d9b434ad1..b4825c78c45 100644
 --- a/libgfortran/ChangeLog
