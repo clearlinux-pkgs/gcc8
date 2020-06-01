@@ -50,7 +50,10 @@ Fritz Reese (2):
       Backport form master: Fix fortran/85982 ICE in resolve_component.
       Indicate backport in changelogs from last commit.
 
-GCC Administrator (85):
+GCC Administrator (88):
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -243,10 +246,17 @@ Will Schmidt (1):
       rs6000 pragma fix backport from mainline to gcc-8
 
 diff --git a/contrib/ChangeLog b/contrib/ChangeLog
-index e6dc6514fbe..2315d51a89e 100644
+index e6dc6514fbe..3e0a7a4a147 100644
 --- a/contrib/ChangeLog
 +++ b/contrib/ChangeLog
-@@ -1,3 +1,7 @@
+@@ -1,3 +1,14 @@
++2020-05-29  Martin Liska  <mliska@suse.cz>
++
++	* git-backport.py: The script did 'git co HEAD~' when
++	there was no modified ChangeLog file in a successful
++	git cherry pick.
++	Run cherry-pick --continue without editor.
++
 +2020-05-27  Martin Liska  <mliska@suse.cz>
 +
 +	* git-backport.py: New file.
@@ -333,10 +343,23 @@ index a2f28f43be3..6da4de57dc6 100644
 -8.4.0
 +8.4.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 142499c563c..956ad8b39fe 100644
+index 142499c563c..fe3fd974880 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,505 @@
+@@ -1,3 +1,518 @@
++2020-05-29  Alex Coplan  <alex.coplan@arm.com>
++
++	PR target/94591
++	* config/aarch64/aarch64.c (aarch64_evpc_rev_local): Don't match
++	identity permutation.
++
++2020-05-29  Dong JianQiang  <dongjianqiang2@huawei.com>
++
++	PR gcov-profile/95332
++	* gcov-io.c (gcov_var::endian): Move field.
++	(from_file): Add IN_GCOV_TOOL check.
++	* gcov-io.h (gcov_magic): Ditto.
++
 +2020-05-24  H.J. Lu  <hongjiu.lu@intel.com>
 +
 +	PR target/95258
@@ -4622,10 +4645,15 @@ index d9c66d42c26..0aa78a31411 100644
  extern void mark_end_of_function_resources (rtx, bool);
  extern void init_resource_info (rtx_insn *);
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index ab652ddc144..aadf5071c29 100644
+index ab652ddc144..8038e5798d5 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,293 @@
+@@ -1,3 +1,298 @@
++2020-05-29  Alex Coplan  <alex.coplan@arm.com>
++
++	PR target/94591
++	* gcc.c-torture/execute/pr94591.c: New test.
++
 +2020-05-28  Tobias Burnus  <tobias@codesourcery.com>
 +
 +	PR fortran/50392
@@ -7850,10 +7878,24 @@ index 36d86f369fe..f8d678744db 100644
        asm volatile ("fdivs\t%1" : "+t" (f) : "m" (g));
        /* No need for fwait, exception is triggered by emitted fstp.  */
 diff --git a/libgcc/ChangeLog b/libgcc/ChangeLog
-index d0ac4295575..030e4d7ee24 100644
+index d0ac4295575..2d7e900a653 100644
 --- a/libgcc/ChangeLog
 +++ b/libgcc/ChangeLog
-@@ -1,3 +1,91 @@
+@@ -1,3 +1,105 @@
++2020-05-29  Kyrylo Tkachov  <kyrylo.tkachov@arm.com>
++
++	* config/aarch64/lse-init.c (init_have_lse_atomics): Use __getauxval
++	instead of getauxval.
++	(AT_HWCAP): Define.
++	(HWCAP_ATOMICS): Define.
++	Guard detection on __gnu_linux__.
++
++2020-05-29  Dong JianQiang  <dongjianqiang2@huawei.com>
++
++	PR gcov-profile/95332
++	* libgcov-util.c (read_gcda_file): Call gcov_magic.
++	* libgcov.h (gcov_magic): Disable GCC poison.
++
 +2020-05-20  H.J. Lu  <hongjiu.lu@intel.com>
 +
 +	Backport from master
