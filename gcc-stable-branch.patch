@@ -50,7 +50,8 @@ Fritz Reese (2):
       Backport form master: Fix fortran/85982 ICE in resolve_component.
       Indicate backport in changelogs from last commit.
 
-GCC Administrator (88):
+GCC Administrator (89):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -196,7 +197,7 @@ Martin Jambor (2):
       gcc-8 sra: Cap number of sub-access propagations with a param (PR 93435)
       sra-8: Fix sra_modify_expr handling of partial writes (PR 94482)
 
-Martin Liska (8):
+Martin Liska (10):
       Backport 9297e013293e4d332fc7c40859ea4dd9616e0d88
       Backport 55a7380213a5c16120d5c674fb42b38a3d796b57
       Add outline-atomics to target attribute.
@@ -205,6 +206,8 @@ Martin Liska (8):
       Add new git-backport.py script.
       Fix various limitations of git-backport.py.
       gcov-tool: Flexible endian adjustment for merging coverage data
+      Remove accidentally installed file.
+      Remove bad ChangeLog entry.
 
 Max Filippov (2):
       xtensa: backport fix for PR target/91880
@@ -227,8 +230,9 @@ Tamar Christina (2):
       AArch64: Break apart paradoxical subregs for VSTRUCT writes (PR target/94052)
       AArch64: Fix options canonicanization for assembler
 
-Thomas Koenig (1):
+Thomas Koenig (2):
       Revert patch for PR fortran/93956.
+      Finalization depends on the expression, not on the component.
 
 Thomas König (2):
       Backport from trunk of the fix for PR 94270.
@@ -3823,10 +3827,18 @@ index bed6c981852..d496f57547a 100644
  
  /* Examine CFI and return true if a cfi label and set_loc is needed
 diff --git a/gcc/fortran/ChangeLog b/gcc/fortran/ChangeLog
-index d3be7538ff7..240c28bfbd8 100644
+index d3be7538ff7..1039aa5252e 100644
 --- a/gcc/fortran/ChangeLog
 +++ b/gcc/fortran/ChangeLog
-@@ -1,3 +1,109 @@
+@@ -1,3 +1,117 @@
++2020-06-01  Thomas Koenig  <tkoenig@gcc.gnu.org>
++
++	PR fortran/94361
++	* class.c (finalize_component): Use expr->finalized instead of
++	comp->finalized.
++	* gfortran.h (gfc_component): Remove finalized member.
++	(gfc_expr): Add it here instead.
++
 +2020-05-28  Tobias Burnus  <tobias@codesourcery.com>
 +	    Mark Eggleston  <markeggleston@gnu.gcc.org>
 +
@@ -3936,6 +3948,36 @@ index d3be7538ff7..240c28bfbd8 100644
  2020-03-04  Release Manager
  
  	* GCC 8.4.0 released.
+diff --git a/gcc/fortran/class.c b/gcc/fortran/class.c
+index 23a0468dedd..90563cac7b0 100644
+--- a/gcc/fortran/class.c
++++ b/gcc/fortran/class.c
+@@ -907,7 +907,7 @@ finalize_component (gfc_expr *expr, gfc_symbol *derived, gfc_component *comp,
+   if (!comp_is_finalizable (comp))
+     return;
+ 
+-  if (comp->finalized)
++  if (expr->finalized)
+     return;
+ 
+   e = gfc_copy_expr (expr);
+@@ -998,6 +998,7 @@ finalize_component (gfc_expr *expr, gfc_symbol *derived, gfc_component *comp,
+ 	}
+       else
+ 	(*code) = cond;
++
+     }
+   else if (comp->ts.type == BT_DERIVED
+ 	    && comp->ts.u.derived->f2k_derived
+@@ -1037,7 +1038,7 @@ finalize_component (gfc_expr *expr, gfc_symbol *derived, gfc_component *comp,
+ 			    sub_ns);
+       gfc_free_expr (e);
+     }
+-  comp->finalized = true;
++  expr->finalized = 1;
+ }
+ 
+ 
 diff --git a/gcc/fortran/decl.c b/gcc/fortran/decl.c
 index 13dd7352d27..8e7327dc568 100644
 --- a/gcc/fortran/decl.c
@@ -4017,10 +4059,18 @@ index be0fd0f7e6c..e317c89ba5d 100644
  	      in_omp_atomic = true;
  	      break;
 diff --git a/gcc/fortran/gfortran.h b/gcc/fortran/gfortran.h
-index b2e80a6b0a9..3d6e25a3ff4 100644
+index b2e80a6b0a9..d9ba843b096 100644
 --- a/gcc/fortran/gfortran.h
 +++ b/gcc/fortran/gfortran.h
-@@ -1587,7 +1587,10 @@ typedef struct gfc_symbol
+@@ -1080,7 +1080,6 @@ typedef struct gfc_component
+   struct gfc_typebound_proc *tb;
+   /* When allocatable/pointer and in a coarray the associated token.  */
+   tree caf_token;
+-  bool finalized;
+ }
+ gfc_component;
+ 
+@@ -1587,7 +1586,10 @@ typedef struct gfc_symbol
    /* Set if the symbol is used in a function result specification .  */
    unsigned fn_result_spec:1;
    /* Used to avoid multiple resolutions of a single symbol.  */
@@ -4032,6 +4082,17 @@ index b2e80a6b0a9..3d6e25a3ff4 100644
    /* Set if this is a module function or subroutine with the
       abreviated declaration in a submodule.  */
    unsigned abr_modproc_decl:1;
+@@ -2152,6 +2154,10 @@ typedef struct gfc_expr
+   /* Set this if no warning should be given somewhere in a lower level.  */
+ 
+   unsigned int do_not_warn : 1;
++
++  /* Set this if the expression has already been finalized.  */
++  unsigned int finalized : 1;
++
+   /* If an expression comes from a Hollerith constant or compile-time
+      evaluation of a transfer statement, it may have a prescribed target-
+      memory representation, and these cannot always be backformed from
 diff --git a/gcc/fortran/interface.c b/gcc/fortran/interface.c
 index 04850b0406c..689c30210d7 100644
 --- a/gcc/fortran/interface.c
@@ -4645,10 +4706,17 @@ index d9c66d42c26..0aa78a31411 100644
  extern void mark_end_of_function_resources (rtx, bool);
  extern void init_resource_info (rtx_insn *);
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index ab652ddc144..8038e5798d5 100644
+index ab652ddc144..d5e5890e4ae 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,298 @@
+@@ -1,3 +1,305 @@
++2020-06-01  Thomas Koenig  <tkoenig@gcc.gnu.org>
++
++	PR fortran/94361
++	* gfortran.dg/finalize_28.f90: Adjusted free counts.
++	* gfortran.dg/finalize_34.f90: Likewise.
++	* gfortran.dg/finalize_35.f90: New test.
++
 +2020-05-29  Alex Coplan  <alex.coplan@arm.com>
 +
 +	PR target/94591
@@ -7387,6 +7455,80 @@ index 00000000000..bab08b2d5c3
 +end structure
 +
 +end
+diff --git a/gcc/testsuite/gfortran.dg/finalize_28.f90 b/gcc/testsuite/gfortran.dg/finalize_28.f90
+index 597413b2dd3..f0c9665252f 100644
+--- a/gcc/testsuite/gfortran.dg/finalize_28.f90
++++ b/gcc/testsuite/gfortran.dg/finalize_28.f90
+@@ -21,4 +21,4 @@ contains
+     integer, intent(out) :: edges(:,:)
+   end subroutine coo_dump_edges
+ end module coo_graphs
+-! { dg-final { scan-tree-dump-times "__builtin_free" 5 "original" } }
++! { dg-final { scan-tree-dump-times "__builtin_free" 6 "original" } }
+diff --git a/gcc/testsuite/gfortran.dg/finalize_34.f90 b/gcc/testsuite/gfortran.dg/finalize_34.f90
+index e2f02a5c51c..fef7dac6d89 100644
+--- a/gcc/testsuite/gfortran.dg/finalize_34.f90
++++ b/gcc/testsuite/gfortran.dg/finalize_34.f90
+@@ -22,4 +22,4 @@ program main
+   use testmodule
+   type(evtlist_type), dimension(10) :: a
+ end program main
+-! { dg-final  { scan-tree-dump-times "__builtin_free" 8 "original" } }
++! { dg-final  { scan-tree-dump-times "__builtin_free" 12 "original" } }
+diff --git a/gcc/testsuite/gfortran.dg/finalize_35.f90 b/gcc/testsuite/gfortran.dg/finalize_35.f90
+new file mode 100644
+index 00000000000..66435c43ecc
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/finalize_35.f90
+@@ -0,0 +1,48 @@
++! { dg-do compile }
++! { dg-additional-options "-fdump-tree-original" }
++! PR 94361 - this left open some memory leaks.  Original test case by
++! Antony Lewis.
++
++module debug
++  private
++
++  Type TypeWithFinal
++   contains
++     FINAL :: finalizer  !No leak if this line is commented
++  end type TypeWithFinal
++
++  Type Tester
++     real, dimension(:), allocatable :: Dat
++     Type(TypeWithFinal) :: X
++  end Type Tester
++
++  Type :: TestType2
++     Type(Tester) :: T
++  end type TestType2
++  public Leaker
++contains
++
++  subroutine Leaker
++    type(TestType2) :: Test
++
++    allocate(Test%T%Dat(1000))
++  end subroutine Leaker
++
++  subroutine finalizer(this)
++    Type(TypeWithFinal) :: this
++  end subroutine finalizer
++
++end module debug
++
++
++program run
++  use debug
++  implicit none
++  integer i
++
++  do i=1, 1000
++     call Leaker()
++  end do
++
++end program run
++! { dg-final  { scan-tree-dump-times "__builtin_free\\ \\(ptr2" 2 "original" } }
 diff --git a/gcc/testsuite/gfortran.dg/goacc/atomic-1.f90 b/gcc/testsuite/gfortran.dg/goacc/atomic-1.f90
 new file mode 100644
 index 00000000000..579f0494b78
