@@ -50,7 +50,8 @@ Fritz Reese (2):
       Backport form master: Fix fortran/85982 ICE in resolve_component.
       Indicate backport in changelogs from last commit.
 
-GCC Administrator (89):
+GCC Administrator (90):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -180,8 +181,9 @@ Jonathan Wakely (5):
       libstdc++: Fix broken link to SGI STL FAQ
       libstdc++: Replace pre-release version number in docs
 
-Kyrylo Tkachov (1):
+Kyrylo Tkachov (2):
       [AArch64] Use __getauxval instead of getauxval in LSE detection code in libgcc
+      aarch64: Add initial support for -mcpu=zeus
 
 Marek Polacek (1):
       c++: Bogus error with alignof [PR90736]
@@ -249,6 +251,18 @@ Uros Bizjak (3):
 Will Schmidt (1):
       rs6000 pragma fix backport from mainline to gcc-8
 
+diff --git a/ChangeLog b/ChangeLog
+index 659e82a2a51..4062e4cbf57 100644
+--- a/ChangeLog
++++ b/ChangeLog
+@@ -1,3 +1,7 @@
++2020-06-02  Martin Liska  <mliska@suse.cz>
++
++	* -: Remove.
++
+ 2020-03-04  Release Manager
+ 
+ 	* GCC 8.4.0 released.
 diff --git a/contrib/ChangeLog b/contrib/ChangeLog
 index e6dc6514fbe..3e0a7a4a147 100644
 --- a/contrib/ChangeLog
@@ -347,10 +361,16 @@ index a2f28f43be3..6da4de57dc6 100644
 -8.4.0
 +8.4.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 142499c563c..fe3fd974880 100644
+index 142499c563c..1eed9dbb77e 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,518 @@
+@@ -1,3 +1,524 @@
++2020-06-02  Kyrylo Tkachov  <kyrylo.tkachov@arm.com>
++
++	* config/aarch64/aarch64-cores.def (zeus): Define.
++	* config/aarch64/aarch64-tune.md: Regenerate.
++	* doc/invoke.texi (AArch64 Options): Document zeus -mcpu option.
++
 +2020-05-29  Alex Coplan  <alex.coplan@arm.com>
 +
 +	PR target/94591
@@ -936,6 +956,22 @@ index 4bd61e8be1f..21e7820cdb4 100644
  	isa_flag_bits |= opt->flag_canonical;
        }
      }
+diff --git a/gcc/config/aarch64/aarch64-cores.def b/gcc/config/aarch64/aarch64-cores.def
+index f48b7c22b2d..eb01390c262 100644
+--- a/gcc/config/aarch64/aarch64-cores.def
++++ b/gcc/config/aarch64/aarch64-cores.def
+@@ -94,6 +94,11 @@ AARCH64_CORE("neoverse-n1", neoversen1,cortexa57, 8_2A,  AARCH64_FL_FOR_ARCH8_2
+ /* Qualcomm ('Q') cores. */
+ AARCH64_CORE("saphira",     saphira,    falkor,    8_3A,  AARCH64_FL_FOR_ARCH8_3 | AARCH64_FL_CRYPTO | AARCH64_FL_RCPC, saphira,   0x51, 0xC01, -1)
+ 
++/* ARMv8.4-A Architecture Processors.  */
++
++/* ARM ('A') cores. */
++AARCH64_CORE("zeus", zeus, cortexa57, 8_4A,  AARCH64_FL_FOR_ARCH8_4 | AARCH64_FL_F16 | AARCH64_FL_RCPC | AARCH64_FL_SVE, cortexa72, 0x41, 0xd40, -1)
++
+ /* ARMv8-A big.LITTLE implementations.  */
+ 
+ AARCH64_CORE("cortex-a57.cortex-a53",  cortexa57cortexa53, cortexa53, 8A,  AARCH64_FL_FOR_ARCH8 | AARCH64_FL_CRC, cortexa57, 0x41, AARCH64_BIG_LITTLE (0xd07, 0xd03), -1)
 diff --git a/gcc/config/aarch64/aarch64-protos.h b/gcc/config/aarch64/aarch64-protos.h
 index cda2895d28e..0f1dc75a27f 100644
 --- a/gcc/config/aarch64/aarch64-protos.h
@@ -1000,6 +1036,17 @@ index 1154fc3d58d..da664fc5d29 100644
  })
  
  (define_insn "*aarch64_mov<mode>"
+diff --git a/gcc/config/aarch64/aarch64-tune.md b/gcc/config/aarch64/aarch64-tune.md
+index f08b7e44b27..c2de5e873a7 100644
+--- a/gcc/config/aarch64/aarch64-tune.md
++++ b/gcc/config/aarch64/aarch64-tune.md
+@@ -1,5 +1,5 @@
+ ;; -*- buffer-read-only: t -*-
+ ;; Generated automatically by gentune.sh from aarch64-cores.def
+ (define_attr "tune"
+-	"cortexa35,cortexa53,cortexa57,cortexa72,cortexa73,thunderx,thunderxt88p1,thunderxt88,thunderxt81,thunderxt83,xgene1,falkor,qdf24xx,exynosm1,thunderx2t99p1,vulcan,thunderx2t99,cortexa55,cortexa75,cortexa76,ares,neoversen1,saphira,cortexa57cortexa53,cortexa72cortexa53,cortexa73cortexa35,cortexa73cortexa53,cortexa75cortexa55"
++	"cortexa35,cortexa53,cortexa57,cortexa72,cortexa73,thunderx,thunderxt88p1,thunderxt88,thunderxt81,thunderxt83,xgene1,falkor,qdf24xx,exynosm1,thunderx2t99p1,vulcan,thunderx2t99,cortexa55,cortexa75,cortexa76,ares,neoversen1,saphira,zeus,cortexa57cortexa53,cortexa72cortexa53,cortexa73cortexa35,cortexa73cortexa53,cortexa75cortexa55"
+ 	(const (symbol_ref "((enum attr_tune) aarch64_tune)")))
 diff --git a/gcc/config/aarch64/aarch64.c b/gcc/config/aarch64/aarch64.c
 index 20761578fb6..14ed69f460d 100644
 --- a/gcc/config/aarch64/aarch64.c
@@ -3694,7 +3741,7 @@ index 2ab45763a6b..bef02fc0b29 100644
  
  The above target attributes can be specified as follows:
 diff --git a/gcc/doc/invoke.texi b/gcc/doc/invoke.texi
-index f3d7c5720b7..bdad016baeb 100644
+index f3d7c5720b7..e48ccce1c6e 100644
 --- a/gcc/doc/invoke.texi
 +++ b/gcc/doc/invoke.texi
 @@ -604,7 +604,8 @@ Objective-C and Objective-C++ Dialects}.
@@ -3751,6 +3798,15 @@ index f3d7c5720b7..bdad016baeb 100644
  @item -march=@var{name}
  @opindex march
  Specify the name of the target architecture and, optionally, one or
+@@ -14747,7 +14771,7 @@ Specify the name of the target processor for which GCC should tune the
+ performance of the code.  Permissible values for this option are:
+ @samp{generic}, @samp{cortex-a35}, @samp{cortex-a53}, @samp{cortex-a55},
+ @samp{cortex-a57}, @samp{cortex-a72}, @samp{cortex-a73}, @samp{cortex-a75},
+-@samp{cortex-a76}, @samp{ares}, @samp{neoverse-n1}
++@samp{cortex-a76}, @samp{ares}, @samp{neoverse-n1}, @samp{zeus},
+ @samp{exynos-m1}, @samp{falkor}, @samp{qdf24xx}, @samp{saphira},
+ @samp{xgene1}, @samp{vulcan}, @samp{thunderx},
+ @samp{thunderxt88}, @samp{thunderxt88p1}, @samp{thunderxt81},
 diff --git a/gcc/dwarf2cfi.c b/gcc/dwarf2cfi.c
 index bed6c981852..d496f57547a 100644
 --- a/gcc/dwarf2cfi.c
