@@ -50,7 +50,10 @@ Fritz Reese (2):
       Backport form master: Fix fortran/85982 ICE in resolve_component.
       Indicate backport in changelogs from last commit.
 
-GCC Administrator (92):
+GCC Administrator (95):
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -367,10 +370,15 @@ index a2f28f43be3..6da4de57dc6 100644
 -8.4.0
 +8.4.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 142499c563c..1eed9dbb77e 100644
+index 142499c563c..448d3deed7d 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,524 @@
+@@ -1,3 +1,529 @@
++2020-06-05  H.J. Lu  <hjl.tools@gmail.com>
++
++	* config/i386/driver-i386.c (host_detect_local_cpu): Support
++	Intel Airmont, Comet Lake and Ice Lake processor families.
++
 +2020-06-02  Kyrylo Tkachov  <kyrylo.tkachov@arm.com>
 +
 +	* config/aarch64/aarch64-cores.def (zeus): Define.
