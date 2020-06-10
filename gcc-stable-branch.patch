@@ -31,9 +31,10 @@ Andreas Krebbel (2):
 Bin Cheng (1):
       Add unsigned type iv_cand for iv_use with non mode-precision type
 
-Carl Love (2):
+Carl Love (3):
       rs6000 Add command line and builtin compatibility check
       rs6000: vec_rlnm fix to make builtin work according to ABI
+      pr94833, fix vec_first_match_index for nulls
 
 David Edelsohn (1):
       rs6000: AIX long double builtins for 64 bit long double.
@@ -50,7 +51,9 @@ Fritz Reese (2):
       Backport form master: Fix fortran/85982 ICE in resolve_component.
       Indicate backport in changelogs from last commit.
 
-GCC Administrator (95):
+GCC Administrator (97):
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -3242,6 +3245,21 @@ index 8cf6bd54b2f..75d40367a98 100644
  
        /* Cannot define builtin if the instruction is disabled.  */
        gcc_assert (d->icode != CODE_FOR_nothing);
+diff --git a/gcc/config/rs6000/vsx.md b/gcc/config/rs6000/vsx.md
+index 17c24551306..ea2f2226a31 100644
+--- a/gcc/config/rs6000/vsx.md
++++ b/gcc/config/rs6000/vsx.md
+@@ -4809,8 +4809,8 @@
+   rtx cmp_result = gen_reg_rtx (<MODE>mode);
+   rtx not_result = gen_reg_rtx (<MODE>mode);
+ 
+-  emit_insn (gen_vcmpnez<VSX_EXTRACT_WIDTH> (cmp_result, operands[1],
+-					     operands[2]));
++  emit_insn (gen_vcmpne<VSX_EXTRACT_WIDTH> (cmp_result, operands[1],
++					    operands[2]));
+   emit_insn (gen_one_cmpl<mode>2 (not_result, cmp_result));
+ 
+   sh = GET_MODE_SIZE (GET_MODE_INNER (<MODE>mode)) / 2;
 diff --git a/gcc/config/s390/s390-builtin-types.def b/gcc/config/s390/s390-builtin-types.def
 index 6f257c6de77..9779666a733 100644
 --- a/gcc/config/s390/s390-builtin-types.def
