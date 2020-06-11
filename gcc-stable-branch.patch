@@ -51,7 +51,8 @@ Fritz Reese (2):
       Backport form master: Fix fortran/85982 ICE in resolve_component.
       Indicate backport in changelogs from last commit.
 
-GCC Administrator (97):
+GCC Administrator (98):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -373,10 +374,16 @@ index a2f28f43be3..6da4de57dc6 100644
 -8.4.0
 +8.4.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 142499c563c..448d3deed7d 100644
+index 142499c563c..682b7ac0ec5 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,529 @@
+@@ -1,3 +1,535 @@
++2020-06-10  Carl Love  <cel@us.ibm.com>
++
++	PR target/94833
++	* config/rs6000/vsx.md (define_expand): Fix instruction generation for
++	first_match_index_<mode>.
++
 +2020-06-05  H.J. Lu  <hjl.tools@gmail.com>
 +
 +	* config/i386/driver-i386.c (host_detect_local_cpu): Support
