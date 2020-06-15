@@ -51,7 +51,11 @@ Fritz Reese (2):
       Backport form master: Fix fortran/85982 ICE in resolve_component.
       Indicate backport in changelogs from last commit.
 
-GCC Administrator (98):
+GCC Administrator (102):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -209,7 +213,7 @@ Martin Jambor (2):
       gcc-8 sra: Cap number of sub-access propagations with a param (PR 93435)
       sra-8: Fix sra_modify_expr handling of partial writes (PR 94482)
 
-Martin Liska (10):
+Martin Liska (12):
       Backport 9297e013293e4d332fc7c40859ea4dd9616e0d88
       Backport 55a7380213a5c16120d5c674fb42b38a3d796b57
       Add outline-atomics to target attribute.
@@ -220,6 +224,8 @@ Martin Liska (10):
       gcov-tool: Flexible endian adjustment for merging coverage data
       Remove accidentally installed file.
       Remove bad ChangeLog entry.
+      Add missing store in emission of asan_stack_free.
+      asan: fix RTX emission for ilp32
 
 Max Filippov (2):
       xtensa: backport fix for PR target/91880
@@ -242,9 +248,10 @@ Tamar Christina (2):
       AArch64: Break apart paradoxical subregs for VSTRUCT writes (PR target/94052)
       AArch64: Fix options canonicanization for assembler
 
-Thomas Koenig (2):
+Thomas Koenig (3):
       Revert patch for PR fortran/93956.
       Finalization depends on the expression, not on the component.
+      When avoiding double deallocation, look at namespace, expression and component.
 
 Thomas König (2):
       Backport from trunk of the fix for PR 94270.
@@ -374,10 +381,24 @@ index a2f28f43be3..6da4de57dc6 100644
 -8.4.0
 +8.4.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 142499c563c..682b7ac0ec5 100644
+index 142499c563c..761ad57f860 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,535 @@
+@@ -1,3 +1,549 @@
++2020-06-12  Martin Liska  <mliska@suse.cz>
++	    Jakub Jelinek  <jakub@redhat.com>
++
++	PR sanitizer/95634
++	* asan.c (asan_emit_stack_protection): Fix emission for ilp32
++	by using Pmode instead of ptr_mode.
++
++2020-06-12  Martin Liska  <mliska@suse.cz>
++
++	PR sanitizer/94910
++	* asan.c (asan_emit_stack_protection): Emit
++	also **SavedFlagPtr(FakeStack, class_id) = 0 in order to release
++	a stack frame.
++
 +2020-06-10  Carl Love  <cel@us.ibm.com>
 +
 +	PR target/94833
@@ -938,6 +959,38 @@ index 7fad146a9e3..438fb31602d 100644
  #endif
  #include <windows.h>
  
+diff --git a/gcc/asan.c b/gcc/asan.c
+index 235e219479d..9014df19939 100644
+--- a/gcc/asan.c
++++ b/gcc/asan.c
+@@ -1465,8 +1465,25 @@ asan_emit_stack_protection (rtx base, rtx pbase, unsigned int alignb,
+       if (use_after_return_class < 5
+ 	  && can_store_by_pieces (sz, builtin_memset_read_str, &c,
+ 				  BITS_PER_UNIT, true))
+-	store_by_pieces (shadow_mem, sz, builtin_memset_read_str, &c,
+-			 BITS_PER_UNIT, true, 0);
++	{
++	  /* Emit:
++	       memset(ShadowBase, kAsanStackAfterReturnMagic, ShadowSize);
++	       **SavedFlagPtr(FakeStack, class_id) = 0
++	  */
++	  store_by_pieces (shadow_mem, sz, builtin_memset_read_str, &c,
++			   BITS_PER_UNIT, true, 0);
++
++	  unsigned HOST_WIDE_INT offset
++	    = (1 << (use_after_return_class + 6));
++	  offset -= GET_MODE_SIZE (ptr_mode);
++	  mem = gen_rtx_MEM (ptr_mode, base);
++	  mem = adjust_address (mem, ptr_mode, offset);
++	  rtx addr = gen_reg_rtx (ptr_mode);
++	  emit_move_insn (addr, mem);
++	  addr = convert_memory_address (Pmode, addr);
++	  mem = gen_rtx_MEM (QImode, addr);
++	  emit_move_insn (mem, const0_rtx);
++	}
+       else if (use_after_return_class >= 5
+ 	       || !set_storage_via_setmem (shadow_mem,
+ 					   GEN_INT (sz),
 diff --git a/gcc/common/config/aarch64/aarch64-common.c b/gcc/common/config/aarch64/aarch64-common.c
 index 4bd61e8be1f..21e7820cdb4 100644
 --- a/gcc/common/config/aarch64/aarch64-common.c
@@ -3963,10 +4016,20 @@ index bed6c981852..d496f57547a 100644
  
  /* Examine CFI and return true if a cfi label and set_loc is needed
 diff --git a/gcc/fortran/ChangeLog b/gcc/fortran/ChangeLog
-index d3be7538ff7..1039aa5252e 100644
+index d3be7538ff7..f0a3a30dad0 100644
 --- a/gcc/fortran/ChangeLog
 +++ b/gcc/fortran/ChangeLog
-@@ -1,3 +1,117 @@
+@@ -1,3 +1,127 @@
++2020-06-14  Thomas Koenig  <tkoenig@gcc.gnu.org>
++
++	PR fortran/94109
++	* class.c (finalize_component): Return early if finalization has
++	already happened for expression and component within namespace.
++	* gfortran.h (gfc_was_finalized): New type.
++	(gfc_namespace): Add member was_finalzed.
++	(gfc_expr): Remove finalized.
++	* symbol.c (gfc_free_namespace): Free was_finalized.
++
 +2020-06-01  Thomas Koenig  <tkoenig@gcc.gnu.org>
 +
 +	PR fortran/94361
@@ -4085,19 +4148,31 @@ index d3be7538ff7..1039aa5252e 100644
  
  	* GCC 8.4.0 released.
 diff --git a/gcc/fortran/class.c b/gcc/fortran/class.c
-index 23a0468dedd..90563cac7b0 100644
+index 23a0468dedd..8d7ea836800 100644
 --- a/gcc/fortran/class.c
 +++ b/gcc/fortran/class.c
-@@ -907,7 +907,7 @@ finalize_component (gfc_expr *expr, gfc_symbol *derived, gfc_component *comp,
+@@ -903,12 +903,18 @@ finalize_component (gfc_expr *expr, gfc_symbol *derived, gfc_component *comp,
+ {
+   gfc_expr *e;
+   gfc_ref *ref;
++  gfc_was_finalized *f;
+ 
    if (!comp_is_finalizable (comp))
      return;
  
 -  if (comp->finalized)
-+  if (expr->finalized)
-     return;
+-    return;
++  /* If this expression with this component has been finalized
++     already in this namespace, there is nothing to do.  */
++  for (f = sub_ns->was_finalized; f; f = f->next)
++    {
++      if (f->e == expr && f->c == comp)
++	return;
++    }
  
    e = gfc_copy_expr (expr);
-@@ -998,6 +998,7 @@ finalize_component (gfc_expr *expr, gfc_symbol *derived, gfc_component *comp,
+   if (!e->ref)
+@@ -998,6 +1004,7 @@ finalize_component (gfc_expr *expr, gfc_symbol *derived, gfc_component *comp,
  	}
        else
  	(*code) = cond;
@@ -4105,12 +4180,18 @@ index 23a0468dedd..90563cac7b0 100644
      }
    else if (comp->ts.type == BT_DERIVED
  	    && comp->ts.u.derived->f2k_derived
-@@ -1037,7 +1038,7 @@ finalize_component (gfc_expr *expr, gfc_symbol *derived, gfc_component *comp,
+@@ -1037,7 +1044,13 @@ finalize_component (gfc_expr *expr, gfc_symbol *derived, gfc_component *comp,
  			    sub_ns);
        gfc_free_expr (e);
      }
 -  comp->finalized = true;
-+  expr->finalized = 1;
++
++  /* Record that this was finalized already in this namespace.  */
++  f = sub_ns->was_finalized;
++  sub_ns->was_finalized = XCNEW (gfc_was_finalized);
++  sub_ns->was_finalized->e = expr;
++  sub_ns->was_finalized->c = comp;
++  sub_ns->was_finalized->next = f;
  }
  
  
@@ -4195,7 +4276,7 @@ index be0fd0f7e6c..e317c89ba5d 100644
  	      in_omp_atomic = true;
  	      break;
 diff --git a/gcc/fortran/gfortran.h b/gcc/fortran/gfortran.h
-index b2e80a6b0a9..d9ba843b096 100644
+index b2e80a6b0a9..8256bdc61a3 100644
 --- a/gcc/fortran/gfortran.h
 +++ b/gcc/fortran/gfortran.h
 @@ -1080,7 +1080,6 @@ typedef struct gfc_component
@@ -4218,13 +4299,39 @@ index b2e80a6b0a9..d9ba843b096 100644
    /* Set if this is a module function or subroutine with the
       abreviated declaration in a submodule.  */
    unsigned abr_modproc_decl:1;
-@@ -2152,6 +2154,10 @@ typedef struct gfc_expr
+@@ -1737,6 +1739,16 @@ gfc_oacc_routine_name;
+ 
+ #define gfc_get_oacc_routine_name() XCNEW (gfc_oacc_routine_name)
+ 
++/* Node in linked list to see what has already been finalized
++   earlier.  */
++
++typedef struct gfc_was_finalized {
++  gfc_expr *e;
++  gfc_component *c;
++  struct gfc_was_finalized *next;
++}
++gfc_was_finalized;
++
+ /* A namespace describes the contents of procedure, module, interface block
+    or BLOCK construct.  */
+ /* ??? Anything else use these?  */
+@@ -1829,6 +1841,11 @@ typedef struct gfc_namespace
+   /* Linked list of !$omp declare simd constructs.  */
+   struct gfc_omp_declare_simd *omp_declare_simd;
+ 
++  /* A hash set for the the gfc expressions that have already
++     been finalized in this namespace.  */
++
++  gfc_was_finalized *was_finalized;
++
+   /* Set to 1 if namespace is a BLOCK DATA program unit.  */
+   unsigned is_block_data:1;
+ 
+@@ -2152,6 +2169,7 @@ typedef struct gfc_expr
    /* Set this if no warning should be given somewhere in a lower level.  */
  
    unsigned int do_not_warn : 1;
-+
-+  /* Set this if the expression has already been finalized.  */
-+  unsigned int finalized : 1;
 +
    /* If an expression comes from a Hollerith constant or compile-time
       evaluation of a transfer statement, it may have a prescribed target-
@@ -4330,7 +4437,7 @@ index 8afc72350c1..e3212ff55d2 100644
  	  gfc_error ("Array %qs at %L with non-constant bounds cannot be "
  		     "an EQUIVALENCE object", sym->name, &e->where);
 diff --git a/gcc/fortran/symbol.c b/gcc/fortran/symbol.c
-index e783319298c..e07b48ab082 100644
+index e783319298c..b63b625eb70 100644
 --- a/gcc/fortran/symbol.c
 +++ b/gcc/fortran/symbol.c
 @@ -2000,9 +2000,12 @@ gfc_add_type (gfc_symbol *sym, gfc_typespec *ts, locus *where)
@@ -4355,6 +4462,32 @@ index e783319298c..e07b48ab082 100644
 +      gfc_error ("Symbol %qs at %L cannot have a type", sym->ns->proc_name->name, where);
        return false;
      }
+ 
+@@ -4056,6 +4059,7 @@ gfc_free_namespace (gfc_namespace *ns)
+ {
+   gfc_namespace *p, *q;
+   int i;
++  gfc_was_finalized *f;
+ 
+   if (ns == NULL)
+     return;
+@@ -4088,6 +4092,17 @@ gfc_free_namespace (gfc_namespace *ns)
+     gfc_free_interface (ns->op[i]);
+ 
+   gfc_free_data (ns->data);
++
++  /* Free all the expr + component combinations that have been
++     finalized.  */
++  f = ns->was_finalized;
++  while (f)
++    {
++      gfc_was_finalized* current = f;
++      f = f->next;
++      free (current);
++    }
++
+   p = ns->contained;
+   free (ns);
  
 diff --git a/gcc/fortran/trans-array.c b/gcc/fortran/trans-array.c
 index 9b898888e3d..52b46e22106 100644
@@ -4842,10 +4975,16 @@ index d9c66d42c26..0aa78a31411 100644
  extern void mark_end_of_function_resources (rtx, bool);
  extern void init_resource_info (rtx_insn *);
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index ab652ddc144..d5e5890e4ae 100644
+index ab652ddc144..0af007f252e 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,305 @@
+@@ -1,3 +1,311 @@
++2020-06-14  Thomas Koenig  <tkoenig@gcc.gnu.org>
++
++	PR fortran/94109
++	* gfortran.dg/finalize_34.f90: Adjust free counts.
++	* gfortran.dg/finalize_36.f90: New test.
++
 +2020-06-01  Thomas Koenig  <tkoenig@gcc.gnu.org>
 +
 +	PR fortran/94361
@@ -7602,7 +7741,7 @@ index 597413b2dd3..f0c9665252f 100644
 -! { dg-final { scan-tree-dump-times "__builtin_free" 5 "original" } }
 +! { dg-final { scan-tree-dump-times "__builtin_free" 6 "original" } }
 diff --git a/gcc/testsuite/gfortran.dg/finalize_34.f90 b/gcc/testsuite/gfortran.dg/finalize_34.f90
-index e2f02a5c51c..fef7dac6d89 100644
+index e2f02a5c51c..8fb801d4235 100644
 --- a/gcc/testsuite/gfortran.dg/finalize_34.f90
 +++ b/gcc/testsuite/gfortran.dg/finalize_34.f90
 @@ -22,4 +22,4 @@ program main
@@ -7610,7 +7749,7 @@ index e2f02a5c51c..fef7dac6d89 100644
    type(evtlist_type), dimension(10) :: a
  end program main
 -! { dg-final  { scan-tree-dump-times "__builtin_free" 8 "original" } }
-+! { dg-final  { scan-tree-dump-times "__builtin_free" 12 "original" } }
++! { dg-final  { scan-tree-dump-times "__builtin_free" 24 "original" } }
 diff --git a/gcc/testsuite/gfortran.dg/finalize_35.f90 b/gcc/testsuite/gfortran.dg/finalize_35.f90
 new file mode 100644
 index 00000000000..66435c43ecc
@@ -7665,6 +7804,51 @@ index 00000000000..66435c43ecc
 +
 +end program run
 +! { dg-final  { scan-tree-dump-times "__builtin_free\\ \\(ptr2" 2 "original" } }
+diff --git a/gcc/testsuite/gfortran.dg/finalize_36.f90 b/gcc/testsuite/gfortran.dg/finalize_36.f90
+new file mode 100644
+index 00000000000..432f5472aeb
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/finalize_36.f90
+@@ -0,0 +1,39 @@
++! { dg-do run }
++! { dg-additional-options "-fdump-tree-original" }
++! PR 94109
++! This used to leak memory.  Test case by Antony Lewis.
++    module debug
++    implicit none
++
++    Type Tester
++        real, dimension(:), allocatable :: Dat, Dat2
++    end Type
++
++    Type TestType2
++        Type(Tester) :: T
++    end type TestType2
++
++    contains
++
++    subroutine Leaker
++    class(TestType2), pointer :: ActiveState
++    Type(Tester) :: Temp
++
++    allocate(Temp%Dat2(10000))
++
++    allocate(TestType2::ActiveState)
++    ActiveState%T = Temp
++    deallocate(ActiveState)
++
++    end subroutine
++
++    end module
++
++
++    program run
++    use debug
++
++    call Leaker()
++
++    end program
++! { dg-final { scan-tree-dump-times "__builtin_free\\ \\(ptr2" 4 "original" } }
 diff --git a/gcc/testsuite/gfortran.dg/goacc/atomic-1.f90 b/gcc/testsuite/gfortran.dg/goacc/atomic-1.f90
 new file mode 100644
 index 00000000000..579f0494b78
