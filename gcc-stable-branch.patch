@@ -175,6 +175,9 @@ H.J. Lu (8):
       x86: Handle -mavx512vpopcntdq for -march=native
       x86: Update Intel processor detection
 
+Harald Anlauf (1):
+      PR fortran/95689 - ICE in check_sym_interfaces, at fortran/interface.c:2015
+
 Iain Sandoe (1):
       Darwin: Fix i686 bootstrap when the assembler supports GOTOFF in data.
 
@@ -4410,10 +4413,29 @@ index b2e80a6b0a9..8256bdc61a3 100644
       evaluation of a transfer statement, it may have a prescribed target-
       memory representation, and these cannot always be backformed from
 diff --git a/gcc/fortran/interface.c b/gcc/fortran/interface.c
-index 04850b0406c..689c30210d7 100644
+index 04850b0406c..ec8fd3a8f68 100644
 --- a/gcc/fortran/interface.c
 +++ b/gcc/fortran/interface.c
-@@ -4940,7 +4940,8 @@ gfc_find_typebound_dtio_proc (gfc_symbol *derived, bool write, bool formatted)
+@@ -1944,7 +1944,8 @@ check_interface1 (gfc_interface *p, gfc_interface *q0,
+ static void
+ check_sym_interfaces (gfc_symbol *sym)
+ {
+-  char interface_name[GFC_MAX_SYMBOL_LEN + sizeof("generic interface ''")];
++  /* Provide sufficient space to hold "generic interface 'symbol.symbol'".  */
++  char interface_name[2*GFC_MAX_SYMBOL_LEN+2 + sizeof("generic interface ''")];
+   gfc_interface *p;
+ 
+   if (sym->ns != gfc_current_ns)
+@@ -1952,6 +1953,8 @@ check_sym_interfaces (gfc_symbol *sym)
+ 
+   if (sym->generic != NULL)
+     {
++      size_t len = strlen (sym->name) + sizeof("generic interface ''");
++      gcc_assert (len < sizeof (interface_name));
+       sprintf (interface_name, "generic interface '%s'", sym->name);
+       if (check_interface0 (sym->generic, interface_name))
+ 	return;
+@@ -4940,7 +4943,8 @@ gfc_find_typebound_dtio_proc (gfc_symbol *derived, bool write, bool formatted)
    gfc_symtree *tb_io_st = NULL;
    bool t = false;
  
@@ -8255,6 +8277,28 @@ index 00000000000..84bfdeaa819
 +end subroutine 
 +
 +! { dg-error "Array '.' at .1. with non-constant bounds cannot be an EQUIVALENCE object" " " { target *-*-* } 9 }
+diff --git a/gcc/testsuite/gfortran.dg/pr95689.f90 b/gcc/testsuite/gfortran.dg/pr95689.f90
+new file mode 100644
+index 00000000000..287ae50b0cb
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/pr95689.f90
+@@ -0,0 +1,16 @@
++! { dg-do compile }
++! { dg-options "-fsecond-underscore" }
++! PR fortran/95689 - ICE in check_sym_interfaces, at fortran/interface.c:2015
++
++module m2345678901234567890123456789012345678901234567890123456789_123
++  type t2345678901234567890123456789012345678901234567890123456789_123
++   end type
++   interface
++      module subroutine s2345678901234567890123456789012345678901234567890123456789_123 &
++                       (x2345678901234567890123456789012345678901234567890123456789_123)
++      end
++   end interface
++end
++submodule(m2345678901234567890123456789012345678901234567890123456789_123) &
++          t2345678901234567890123456789012345678901234567890123456789_123
++end
 diff --git a/gcc/testsuite/gfortran.dg/warn_unused_dummy_argument_6.f90 b/gcc/testsuite/gfortran.dg/warn_unused_dummy_argument_6.f90
 new file mode 100644
 index 00000000000..72f6d5c0857
