@@ -43,16 +43,18 @@ David Edelsohn (1):
 Douglas Rupp (1):
       Require powerpc_vsx_ok in gcc.target/powerpc/pr71763.c
 
-Eric Botcazou (3):
+Eric Botcazou (4):
       Fix incorrect filling of delay slots in branchy code at -O2
       Fix wrong year in ChangeLog.
       Fix Ada bootstrap on Cygwin64
+      Fix memory corruption with vector and variant record
 
 Fritz Reese (2):
       Backport form master: Fix fortran/85982 ICE in resolve_component.
       Indicate backport in changelogs from last commit.
 
-GCC Administrator (109):
+GCC Administrator (110):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -976,6 +978,48 @@ index cb4bdaf32cb..2718106f024 100644
  2020-03-04  Release Manager
  
  	* GCC 8.4.0 released.
+diff --git a/gcc/ada/gcc-interface/trans.c b/gcc/ada/gcc-interface/trans.c
+index 5925a4860da..80575d46e37 100644
+--- a/gcc/ada/gcc-interface/trans.c
++++ b/gcc/ada/gcc-interface/trans.c
+@@ -6840,9 +6840,8 @@ gnat_to_gnu (Node_Id gnat_node)
+ 
+     case N_Allocator:
+       {
+-	tree gnu_init = NULL_TREE;
+-	tree gnu_type;
+-	bool ignore_init_type = false;
++	tree gnu_type, gnu_init;
++	bool ignore_init_type;
+ 
+ 	gnat_temp = Expression (gnat_node);
+ 
+@@ -6852,15 +6851,22 @@ gnat_to_gnu (Node_Id gnat_node)
+ 	   initial value for the object.  */
+ 	if (Nkind (gnat_temp) == N_Identifier
+ 	    || Nkind (gnat_temp) == N_Expanded_Name)
+-	  gnu_type = gnat_to_gnu_type (Entity (gnat_temp));
++	  {
++	    ignore_init_type = false;
++	    gnu_init = NULL_TREE;
++	    gnu_type = gnat_to_gnu_type (Entity (gnat_temp));
++	  }
++
+ 	else if (Nkind (gnat_temp) == N_Qualified_Expression)
+ 	  {
+ 	    Entity_Id gnat_desig_type
+ 	      = Designated_Type (Underlying_Type (Etype (gnat_node)));
+ 
+-	    ignore_init_type = Has_Constrained_Partial_View (gnat_desig_type);
+-	    gnu_init = gnat_to_gnu (Expression (gnat_temp));
++	    /* The flag is effectively only set on the base types.  */
++	    ignore_init_type
++	      = Has_Constrained_Partial_View (Base_Type (gnat_desig_type));
+ 
++	    gnu_init = gnat_to_gnu (Expression (gnat_temp));
+ 	    gnu_init = maybe_unconstrained_array (gnu_init);
+ 	    if (Do_Range_Check (Expression (gnat_temp)))
+ 	      gnu_init
 diff --git a/gcc/ada/mingw32.h b/gcc/ada/mingw32.h
 index 7fad146a9e3..438fb31602d 100644
 --- a/gcc/ada/mingw32.h
