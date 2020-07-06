@@ -54,7 +54,11 @@ Fritz Reese (2):
       Backport form master: Fix fortran/85982 ICE in resolve_component.
       Indicate backport in changelogs from last commit.
 
-GCC Administrator (119):
+GCC Administrator (123):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -186,9 +190,11 @@ H.J. Lu (9):
       x86: Update Intel processor detection
       x96: Remove PTA_CLWB from PTA_ICELAKE_CLIENT
 
-Harald Anlauf (2):
+Harald Anlauf (4):
       PR fortran/95689 - ICE in check_sym_interfaces, at fortran/interface.c:2015
       Revert "PR fortran/95689 - ICE in check_sym_interfaces, at fortran/interface.c:2015"
+      PR fortran/71706 - ICE on using sync images with -fcheck=bounds
+      PR fortran/88379 - ICE with allocatable coarray, class and associate
 
 Iain Sandoe (1):
       Darwin: Fix i686 bootstrap when the assembler supports GOTOFF in data.
@@ -315,10 +321,20 @@ index 659e82a2a51..4062e4cbf57 100644
  
  	* GCC 8.4.0 released.
 diff --git a/contrib/ChangeLog b/contrib/ChangeLog
-index e6dc6514fbe..3e0a7a4a147 100644
+index e6dc6514fbe..806fef51eb2 100644
 --- a/contrib/ChangeLog
 +++ b/contrib/ChangeLog
-@@ -1,3 +1,14 @@
+@@ -1,3 +1,24 @@
++2020-07-02  Martin Liska  <mliska@suse.cz>
++
++	* gcc-changelog/git_check_commit.py: New file.
++	* gcc-changelog/git_commit.py: New file.
++	* gcc-changelog/git_email.py: New file.
++	* gcc-changelog/git_repository.py: New file.
++	* gcc-changelog/git_update_version.py: New file.
++	* gcc-changelog/test_email.py: New file.
++	* gcc-changelog/test_patches.txt: New file.
++
 +2020-05-29  Martin Liska  <mliska@suse.cz>
 +
 +	* git-backport.py: The script did 'git co HEAD~' when
@@ -8882,10 +8898,27 @@ index bed6c981852..d496f57547a 100644
  
  /* Examine CFI and return true if a cfi label and set_loc is needed
 diff --git a/gcc/fortran/ChangeLog b/gcc/fortran/ChangeLog
-index d3be7538ff7..ec4b0704aad 100644
+index d3be7538ff7..537473fa8ae 100644
 --- a/gcc/fortran/ChangeLog
 +++ b/gcc/fortran/ChangeLog
-@@ -1,3 +1,152 @@
+@@ -1,3 +1,169 @@
++2020-07-05  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2020-06-30  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/88379
++	* resolve.c (resolve_assoc_var): Avoid NULL pointer dereference.
++
++2020-07-02  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2020-06-29  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/71706
++	* trans-stmt.c (gfc_trans_sync): Do proper kind conversion in
++	bounds-checking code.
++
 +2020-07-01  Mark Eggleston  <markeggleston@gcc.gnu.org>
 +
 +	Backported from master:
@@ -9267,7 +9300,7 @@ index d0a4b53da6b..9b61f1f52ec 100644
        /* If a comma appears, it is an intrinsic subprogram. */
        gfc_gobble_whitespace ();
 diff --git a/gcc/fortran/resolve.c b/gcc/fortran/resolve.c
-index 8afc72350c1..e3212ff55d2 100644
+index 8afc72350c1..462d07351ad 100644
 --- a/gcc/fortran/resolve.c
 +++ b/gcc/fortran/resolve.c
 @@ -1746,9 +1746,11 @@ gfc_resolve_intrinsic (gfc_symbol *sym, locus *loc)
@@ -9283,6 +9316,15 @@ index 8afc72350c1..e3212ff55d2 100644
    /* Already resolved.  */
    if (sym->from_intmod && sym->ts.type != BT_UNKNOWN)
      return true;
+@@ -8729,7 +8731,7 @@ resolve_assoc_var (gfc_symbol* sym, bool resolve_target)
+ 	  as = NULL;
+ 	  sym->ts = *ts;
+ 	  sym->ts.type = BT_CLASS;
+-	  attr = CLASS_DATA (sym)->attr;
++	  attr = CLASS_DATA (sym) ? CLASS_DATA (sym)->attr : sym->attr;
+ 	  attr.class_ok = 0;
+ 	  attr.associate_var = 1;
+ 	  attr.dimension = attr.codimension = 0;
 @@ -12590,8 +12592,10 @@ resolve_fl_procedure (gfc_symbol *sym, int mp_flag)
      {
        if (sym->attr.proc_pointer)
@@ -9474,6 +9516,37 @@ index 2dc350fbb5a..3780d27a9f6 100644
  	    {
  	      if (warn_unused_dummy_argument)
  		gfc_warning (OPT_Wunused_dummy_argument,
+diff --git a/gcc/fortran/trans-stmt.c b/gcc/fortran/trans-stmt.c
+index 32eb25dce79..acc975b87b3 100644
+--- a/gcc/fortran/trans-stmt.c
++++ b/gcc/fortran/trans-stmt.c
+@@ -1213,6 +1213,7 @@ gfc_trans_sync (gfc_code *code, gfc_exec_op type)
+   if (code->expr1 && (gfc_option.rtcheck & GFC_RTCHECK_BOUNDS)
+       && code->expr1->rank == 0)
+     {
++      tree images2 = fold_convert (integer_type_node, images);
+       tree cond;
+       if (flag_coarray != GFC_FCOARRAY_LIB)
+ 	cond = fold_build2_loc (input_location, NE_EXPR, logical_type_node,
+@@ -1224,7 +1225,7 @@ gfc_trans_sync (gfc_code *code, gfc_exec_op type)
+ 				     2, integer_zero_node,
+ 				     build_int_cst (integer_type_node, -1));
+ 	  cond = fold_build2_loc (input_location, GT_EXPR, logical_type_node,
+-				  images, tmp);
++				  images2, tmp);
+ 	  cond2 = fold_build2_loc (input_location, LT_EXPR, logical_type_node,
+ 				   images,
+ 				   build_int_cst (TREE_TYPE (images), 1));
+@@ -1233,8 +1234,7 @@ gfc_trans_sync (gfc_code *code, gfc_exec_op type)
+ 	}
+       gfc_trans_runtime_check (true, false, cond, &se.pre,
+ 			       &code->expr1->where, "Invalid image number "
+-			       "%d in SYNC IMAGES",
+-			       fold_convert (integer_type_node, images));
++			       "%d in SYNC IMAGES", images2);
+     }
+ 
+   /* Per F2008, 8.5.1, a SYNC MEMORY is implied by calling the
 diff --git a/gcc/fortran/trans-types.c b/gcc/fortran/trans-types.c
 index cc505aeb0bd..6b4a9e7d86b 100644
 --- a/gcc/fortran/trans-types.c
@@ -9904,10 +9977,26 @@ index d9c66d42c26..0aa78a31411 100644
  extern void mark_end_of_function_resources (rtx, bool);
  extern void init_resource_info (rtx_insn *);
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index ab652ddc144..4ca1e01ea61 100644
+index ab652ddc144..82ab48d32c2 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,359 @@
+@@ -1,3 +1,375 @@
++2020-07-05  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2020-06-30  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/88379
++	* gfortran.dg/pr88379.f90: New file.
++
++2020-07-02  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2020-06-29  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/71706
++	* gfortran.dg/pr71706.f90: New file.
++
 +2020-07-01  Mark Eggleston  <markeggleston@gcc.gnu.org>
 +
 +	Backported from master:
@@ -13068,6 +13157,39 @@ index 00000000000..a84328f0851
 +  nargs = command_argument_count()
 +end
 +
+diff --git a/gcc/testsuite/gfortran.dg/pr71706.f90 b/gcc/testsuite/gfortran.dg/pr71706.f90
+new file mode 100644
+index 00000000000..860c1c8be80
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/pr71706.f90
+@@ -0,0 +1,10 @@
++! { dg-do compile }
++! { dg-options "-fcoarray=lib -fcheck=all -fdefault-integer-8" }
++! PR fortran/71706 - ICE on using sync images with -fcheck=bounds
++
++program p
++  integer, volatile :: me = 1
++  sync images (me)
++  sync images (int (me, 2))
++  sync images (int (me, 8))
++end
+diff --git a/gcc/testsuite/gfortran.dg/pr88379.f90 b/gcc/testsuite/gfortran.dg/pr88379.f90
+new file mode 100644
+index 00000000000..48a23af50c5
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/pr88379.f90
+@@ -0,0 +1,11 @@
++! { dg-do compile }
++! { dg-options "-fcoarray=single" }
++! PR fortran/88379 - ICE with allocatable coarray, class and associate
++
++program p
++  type t
++  end type t
++  class(t), allocatable :: x[:]
++  associate (y => x)
++  end associate
++end
 diff --git a/gcc/testsuite/gfortran.dg/pr91913.f90 b/gcc/testsuite/gfortran.dg/pr91913.f90
 new file mode 100644
 index 00000000000..7d5477ac0c3
