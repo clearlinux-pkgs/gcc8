@@ -2,6 +2,9 @@ Alex Coplan (2):
       aarch64: PR target/94591: Don't generate invalid REV64 insns
       arm: Don't generate invalid LDRD insns
 
+Alexandre Oliva (1):
+      accept <case> and [cond] in ChangeLog
+
 Andre Vieira (21):
       aarch64: Add early clobber for aarch64_store_exclusive.
       aarch64: Simplify LSE cas generation
@@ -54,7 +57,8 @@ Fritz Reese (2):
       Backport form master: Fix fortran/85982 ICE in resolve_component.
       Indicate backport in changelogs from last commit.
 
-GCC Administrator (124):
+GCC Administrator (125):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -408,7 +412,7 @@ index 00000000000..935425ef813
 +exit(retval)
 diff --git a/contrib/gcc-changelog/git_commit.py b/contrib/gcc-changelog/git_commit.py
 new file mode 100755
-index 00000000000..4d003ccf496
+index 00000000000..827976c2f84
 --- /dev/null
 +++ b/contrib/gcc-changelog/git_commit.py
 @@ -0,0 +1,676 @@
@@ -568,6 +572,7 @@ index 00000000000..4d003ccf496
 +pr_regex = re.compile(r'\tPR (?P<component>[a-z+-]+\/)?([0-9]+)$')
 +dr_regex = re.compile(r'\tDR ([0-9]+)$')
 +star_prefix_regex = re.compile(r'\t\*(?P<spaces>\ *)(?P<content>.*)')
++end_of_location_regex = re.compile(r'[\[<(:]')
 +
 +LINE_LIMIT = 100
 +TAB_WIDTH = 8
@@ -618,14 +623,13 @@ index 00000000000..4d003ccf496
 +                line = m.group('content')
 +
 +            if in_location:
-+                # Strip everything that is not a filename in "line": entities
-+                # "(NAME)", entry text (the colon, if present, and anything
-+                # that follows it).
-+                if '(' in line:
-+                    line = line[:line.index('(')]
-+                    in_location = False
-+                if ':' in line:
-+                    line = line[:line.index(':')]
++                # Strip everything that is not a filename in "line":
++                # entities "(NAME)", cases "<PATTERN>", conditions
++                # "[COND]", entry text (the colon, if present, and
++                # anything that follows it).
++                m = end_of_location_regex.search(line)
++                if m:
++                    line = line[:m.start()]
 +                    in_location = False
 +
 +                # At this point, all that's left is a list of filenames
@@ -1438,10 +1442,10 @@ index 00000000000..ac1b206d238
 +            print('branch is done\n', flush=True)
 diff --git a/contrib/gcc-changelog/test_email.py b/contrib/gcc-changelog/test_email.py
 new file mode 100755
-index 00000000000..1c9f8847fe7
+index 00000000000..b6fbe6a5303
 --- /dev/null
 +++ b/contrib/gcc-changelog/test_email.py
-@@ -0,0 +1,363 @@
+@@ -0,0 +1,367 @@
 +#!/usr/bin/env python3
 +#
 +# This file is part of GCC.
@@ -1805,12 +1809,16 @@ index 00000000000..1c9f8847fe7
 +        assert '\tBackported from master:' in entry
 +        assert '\t2020-06-11  Martin Liska  <mliska@suse.cz>' in entry
 +        assert '\t\t    Jakub Jelinek  <jakub@redhat.com>' in entry
++
++    def test_square_and_lt_gt(self):
++        email = self.from_patch_glob('0001-Check-for-more-missing')
++        assert not email.errors
 diff --git a/contrib/gcc-changelog/test_patches.txt b/contrib/gcc-changelog/test_patches.txt
 new file mode 100644
-index 00000000000..1463fb94936
+index 00000000000..2bf5d1aefaa
 --- /dev/null
 +++ b/contrib/gcc-changelog/test_patches.txt
-@@ -0,0 +1,3162 @@
+@@ -0,0 +1,3197 @@
 +=== 0342-ARC-Propagate-uncached-type-attribute-to-each-member.patch ===
 +From 62a715c706d8482560dadfa9ead0766f3c20e434 Mon Sep 17 00:00:00 2001
 +From: Claudiu Zissulescu <claziss@gmail.com>
@@ -4972,6 +4980,41 @@ index 00000000000..1463fb94936
 ++
 +-- 
 +2.27.0
++
++=== 0001-Check-for-more-missing-math-decls-on-vxworks.patch ===
++From 0edfc1fd22405ee8e946101e44cd8edc0ee12047 Mon Sep 17 00:00:00 2001
++From: Douglas B Rupp <douglas.b.rupp@gmail.com>
++Date: Sun, 31 May 2020 13:25:28 -0700
++Subject: [PATCH] Check for more missing math decls on vxworks.
++
++Use the GLIBCXX_CHECK_MATH_DECL macro to check for the full list of
++vxworks math decls.
++
++for libstdc++-v3/ChangeLog:
++
++	* crossconfig.m4 <*-vxworks>: Check for more math decls.
++	* configure [FAKEPATCH]: Rebuild.
++---
++ libstdc++-v3/configure      | 255 ++++++++++++++++++++++++++++++++++++++++++++
++ libstdc++-v3/crossconfig.m4 |   3 +-
++ 2 files changed, 257 insertions(+), 1 deletion(-)
++
++diff --git a/libstdc++-v3/configure b/libstdc++-v3/configure
++index b5beb45..4ef678e 100755
++--- a/libstdc++-v3/configure
+++++ b/libstdc++-v3/configure
++@@ -1 +1,2 @@
++ 
+++
++diff --git a/libstdc++-v3/crossconfig.m4 b/libstdc++-v3/crossconfig.m4
++index fe18288..313f84d 100644
++--- a/libstdc++-v3/crossconfig.m4
+++++ b/libstdc++-v3/crossconfig.m4
++@@ -1 +1,2 @@
++ 
+++
++-- 
++2.7.4
 +
 diff --git a/contrib/git-backport.py b/contrib/git-backport.py
 new file mode 100755
