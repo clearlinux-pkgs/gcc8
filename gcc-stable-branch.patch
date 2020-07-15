@@ -57,7 +57,9 @@ Fritz Reese (2):
       Backport form master: Fix fortran/85982 ICE in resolve_component.
       Indicate backport in changelogs from last commit.
 
-GCC Administrator (130):
+GCC Administrator (132):
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -5111,10 +5113,21 @@ index a2f28f43be3..6da4de57dc6 100644
 -8.4.0
 +8.4.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 142499c563c..c0ba4e2112d 100644
+index 142499c563c..62e2856cc91 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,595 @@
+@@ -1,3 +1,606 @@
++2020-07-13  Will Schmidt  <will_schmidt@vnet.ibm.com>
++
++	* config/rs6000/altivec.h (vec_vmsumudm): New define.
++	* config/rs6000/altivec.md (UNSPEC_VMSUMUDM): New unspec.
++	  (altivec_vmsumudm): New define_insn.
++	* config/rs6000/rs6000-builtin.def (altivec_vmsumudm): New BU_ALTIVEC_3
++	  entry. (vmsumudm): New BU_ALTIVEC_OVERLOAD_3 entry.
++	* config/rs6000/rs6000-c.c (altivec_overloaded_builtins): Add
++	  entries for ALTIVEC_BUILTIN_VMSUMUDM variants of vec_msum.
++	* doc/extend.texi: Add document for vmsumudm behind vmsum.
++
 +2020-07-06  Will Schmidt  <will_schmidt@vnet.ibm.com>
 +
 +	* config/rs6000/altivec.h (vec_pack_to_short_fp32): Update.
@@ -10252,10 +10265,17 @@ index d9c66d42c26..0aa78a31411 100644
  extern void mark_end_of_function_resources (rtx, bool);
  extern void init_resource_info (rtx_insn *);
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index ab652ddc144..ac75ca5f882 100644
+index ab652ddc144..48755299701 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,379 @@
+@@ -1,3 +1,386 @@
++2020-07-13  Will Schmidt  <will_schmidt@vnet.ibm.com>
++
++	* gcc.target/powerpc/builtins-msum-runnable.c: New test.
++	* gcc.target/powerpc/vsx-builtin-msum.c: New test.
++	Modified from ...
++	(cherry picked from commit c1a57681a64150d2fc336ba8e055c5f82e3737e8)
++
 +2020-07-06  Will Schmidt  <will_schmidt@vnet.ibm.com>
 +
 +	* gcc.target/powerpc/builtins-1-p9-runnable.c: Update.
