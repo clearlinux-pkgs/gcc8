@@ -28,9 +28,10 @@ Andre Vieira (21):
       aarch64: Fix for PR target/94814
       aarch64: Force TImode values into even registers
 
-Andreas Krebbel (2):
+Andreas Krebbel (3):
       PR94613: Fix vec_sel builtin for IBM Z
       S/390: Fix PR94666
+      S/390: Support vector load/store alignment hints
 
 Bin Cheng (2):
       Add unsigned type iv_cand for iv_use with non mode-precision type
@@ -57,7 +58,8 @@ Fritz Reese (2):
       Backport form master: Fix fortran/85982 ICE in resolve_component.
       Indicate backport in changelogs from last commit.
 
-GCC Administrator (132):
+GCC Administrator (133):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -287,6 +289,9 @@ Richard Earnshaw (1):
 
 Samuel Thibault (1):
       hurd: libgcc unwinding support over signal trampolines
+
+Stefan Schulze Frielinghaus (1):
+      S/390: Emit vector alignment hints for z13 if AS accepts them
 
 Szabolcs Nagy (2):
       aarch64, libgcc: Fix unwinding from pac-ret to normal frames [PR94514]
@@ -5869,6 +5874,31 @@ index 4bd61e8be1f..21e7820cdb4 100644
  	isa_flag_bits |= opt->flag_canonical;
        }
      }
+diff --git a/gcc/config.in b/gcc/config.in
+index 5bccb408016..051e6afb097 100644
+--- a/gcc/config.in
++++ b/gcc/config.in
+@@ -717,6 +717,20 @@
+ #endif
+ 
+ 
++/* Define if your assembler supports vl/vst/vlm/vstm with an optional
++   alignment hint argument. */
++#ifndef USED_FOR_TARGET
++#undef HAVE_AS_VECTOR_LOADSTORE_ALIGNMENT_HINTS
++#endif
++
++
++/* Define if your assembler supports vl/vst/vlm/vstm with an optional
++   alignment hint argument on z13. */
++#ifndef USED_FOR_TARGET
++#undef HAVE_AS_VECTOR_LOADSTORE_ALIGNMENT_HINTS_ON_Z13
++#endif
++
++
+ /* Define if your assembler supports VSX instructions. */
+ #ifndef USED_FOR_TARGET
+ #undef HAVE_AS_VSX
 diff --git a/gcc/config/aarch64/aarch64-cores.def b/gcc/config/aarch64/aarch64-cores.def
 index f48b7c22b2d..eb01390c262 100644
 --- a/gcc/config/aarch64/aarch64-cores.def
@@ -8570,10 +8600,105 @@ index 365e794316a..006669718fa 100644
  
  OB_DEF     (s390_vec_extend_s64,        s390_vec_extend_s64_s8,s390_vec_extend_s64_s32,B_VX,        BT_FN_OV4SI_OV4SI)
  OB_DEF_VAR (s390_vec_extend_s64_s8,     s390_vsegb,         0,                  0,                  BT_OV_V2DI_V16QI)
+diff --git a/gcc/config/s390/s390.c b/gcc/config/s390/s390.c
+index 9e7fd2b04dd..9057154be07 100644
+--- a/gcc/config/s390/s390.c
++++ b/gcc/config/s390/s390.c
+@@ -7697,6 +7697,8 @@ print_operand_address (FILE *file, rtx addr)
+    CODE specified the format flag.  The following format flags
+    are recognized:
+ 
++    'A': On z14 or higher: If operand is a mem print the alignment
++	 hint usable with vl/vst prefixed by a comma.
+     'C': print opcode suffix for branch condition.
+     'D': print opcode suffix for inverse branch condition.
+     'E': print opcode suffix for branch on index instruction.
+@@ -7734,6 +7736,15 @@ print_operand (FILE *file, rtx x, int code)
+ 
+   switch (code)
+     {
++    case 'A':
++      if (TARGET_VECTOR_LOADSTORE_ALIGNMENT_HINTS && MEM_P (x))
++	{
++	  if (MEM_ALIGN (x) >= 128)
++	    fprintf (file, ",4");
++	  else if (MEM_ALIGN (x) == 64)
++	    fprintf (file, ",3");
++	}
++      return;
+     case 'C':
+       fprintf (file, s390_branch_condition_mnemonic (x, FALSE));
+       return;
+diff --git a/gcc/config/s390/s390.h b/gcc/config/s390/s390.h
+index 71a12b8c92e..c5307755aa1 100644
+--- a/gcc/config/s390/s390.h
++++ b/gcc/config/s390/s390.h
+@@ -154,6 +154,13 @@ enum processor_flags
+ 	(TARGET_VX && TARGET_CPU_VXE)
+ #define TARGET_VXE_P(opts)						\
+ 	(TARGET_VX_P (opts) && TARGET_CPU_VXE_P (opts))
++#if defined(HAVE_AS_VECTOR_LOADSTORE_ALIGNMENT_HINTS_ON_Z13)
++#define TARGET_VECTOR_LOADSTORE_ALIGNMENT_HINTS TARGET_Z13
++#elif defined(HAVE_AS_VECTOR_LOADSTORE_ALIGNMENT_HINTS)
++#define TARGET_VECTOR_LOADSTORE_ALIGNMENT_HINTS TARGET_ARCH12
++#else
++#define TARGET_VECTOR_LOADSTORE_ALIGNMENT_HINTS 0
++#endif
+ 
+ #ifdef HAVE_AS_MACHINE_MACHINEMODE
+ #define S390_USE_TARGET_ATTRIBUTE 1
+diff --git a/gcc/config/s390/s390.md b/gcc/config/s390/s390.md
+index 93b1ff0b8db..7114609b676 100644
+--- a/gcc/config/s390/s390.md
++++ b/gcc/config/s390/s390.md
+@@ -1516,8 +1516,8 @@
+    vone\t%v0
+    vlvgp\t%v0,%1,%N1
+    #
+-   vl\t%v0,%1
+-   vst\t%v1,%0
++   vl\t%v0,%1%A1
++   vst\t%v1,%0%A0
+    #
+    #"
+   [(set_attr "op_type" "RSY,RSY,VRR,VRI,VRI,VRR,*,VRX,VRX,*,*")
 diff --git a/gcc/config/s390/vector.md b/gcc/config/s390/vector.md
-index f11ca85ad97..24b200e0c57 100644
+index f11ca85ad97..0fcb8d2e158 100644
 --- a/gcc/config/s390/vector.md
 +++ b/gcc/config/s390/vector.md
+@@ -198,8 +198,8 @@
+   ""
+   "@
+    vlr\t%v0,%v1
+-   vl\t%v0,%1
+-   vst\t%v1,%0
++   vl\t%v0,%1%A1
++   vst\t%v1,%0%A0
+    vzero\t%v0
+    vone\t%v0
+    vgbm\t%v0,%t1
+@@ -549,8 +549,8 @@
+   "TARGET_VX"
+   "@
+    vmrhg\t%v0,%1,%N1
+-   vl\t%v0,%1
+-   vst\t%v1,%0
++   vl\t%v0,%1%A1
++   vst\t%v1,%0%A0
+    vzero\t%v0
+    vlvgp\t%v0,%1,%N1"
+   [(set_attr "op_type" "VRR,VRX,VRX,VRI,VRR")])
+@@ -561,8 +561,8 @@
+   "TARGET_VX"
+   "@
+    vlr\t%v0,%v1
+-   vl\t%v0,%1
+-   vst\t%v1,%0
++   vl\t%v0,%1%A1
++   vst\t%v1,%0%A0
+    vzero\t%v0
+    vone\t%v0
+    vlvgp\t%v0,%1,%N1"
 @@ -818,7 +818,7 @@
  
  (define_expand "popcountv8hi2_vx"
@@ -8719,6 +8844,106 @@ index 209f839cfb0..9b911e30900 100644
    [(set_attr "type"	"arith,load")
     (set_attr "mode"	"SI")
     (set_attr "length"	"3,3")])
+diff --git a/gcc/configure b/gcc/configure
+index 97ba7d7d69c..aa37763d6d4 100755
+--- a/gcc/configure
++++ b/gcc/configure
+@@ -27753,6 +27753,73 @@ $as_echo "#define HAVE_AS_ARCHITECTURE_MODIFIERS 1" >>confdefs.h
+ 
+ fi
+ 
++    { $as_echo "$as_me:${as_lineno-$LINENO}: checking assembler for vector load/store alignment hints" >&5
++$as_echo_n "checking assembler for vector load/store alignment hints... " >&6; }
++if ${gcc_cv_as_s390_vector_loadstore_alignment_hints+:} false; then :
++  $as_echo_n "(cached) " >&6
++else
++  gcc_cv_as_s390_vector_loadstore_alignment_hints=no
++    if test $in_tree_gas = yes; then
++    if test $gcc_cv_gas_vers -ge `expr \( \( 2 \* 1000 \) + 31 \) \* 1000 + 0`
++  then gcc_cv_as_s390_vector_loadstore_alignment_hints=yes
++fi
++  elif test x$gcc_cv_as != x; then
++    $as_echo '	vl %v24,0(%r15),3 ' > conftest.s
++    if { ac_try='$gcc_cv_as $gcc_cv_as_flags  -o conftest.o conftest.s >&5'
++  { { eval echo "\"\$as_me\":${as_lineno-$LINENO}: \"$ac_try\""; } >&5
++  (eval $ac_try) 2>&5
++  ac_status=$?
++  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
++  test $ac_status = 0; }; }
++    then
++	gcc_cv_as_s390_vector_loadstore_alignment_hints=yes
++    else
++      echo "configure: failed program was" >&5
++      cat conftest.s >&5
++    fi
++    rm -f conftest.o conftest.s
++  fi
++fi
++{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $gcc_cv_as_s390_vector_loadstore_alignment_hints" >&5
++$as_echo "$gcc_cv_as_s390_vector_loadstore_alignment_hints" >&6; }
++if test $gcc_cv_as_s390_vector_loadstore_alignment_hints = yes; then
++
++$as_echo "#define HAVE_AS_VECTOR_LOADSTORE_ALIGNMENT_HINTS 1" >>confdefs.h
++
++fi
++
++    { $as_echo "$as_me:${as_lineno-$LINENO}: checking assembler for vector load/store alignment hints on z13" >&5
++$as_echo_n "checking assembler for vector load/store alignment hints on z13... " >&6; }
++if ${gcc_cv_as_s390_vector_loadstore_alignment_hints_on_z13+:} false; then :
++  $as_echo_n "(cached) " >&6
++else
++  gcc_cv_as_s390_vector_loadstore_alignment_hints_on_z13=no
++  if test x$gcc_cv_as != x; then
++    $as_echo '	vl %v24,0(%r15),3 ' > conftest.s
++    if { ac_try='$gcc_cv_as $gcc_cv_as_flags -mzarch -march=z13 -o conftest.o conftest.s >&5'
++  { { eval echo "\"\$as_me\":${as_lineno-$LINENO}: \"$ac_try\""; } >&5
++  (eval $ac_try) 2>&5
++  ac_status=$?
++  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
++  test $ac_status = 0; }; }
++    then
++	gcc_cv_as_s390_vector_loadstore_alignment_hints_on_z13=yes
++    else
++      echo "configure: failed program was" >&5
++      cat conftest.s >&5
++    fi
++    rm -f conftest.o conftest.s
++  fi
++fi
++{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $gcc_cv_as_s390_vector_loadstore_alignment_hints_on_z13" >&5
++$as_echo "$gcc_cv_as_s390_vector_loadstore_alignment_hints_on_z13" >&6; }
++if test $gcc_cv_as_s390_vector_loadstore_alignment_hints_on_z13 = yes; then
++
++$as_echo "#define HAVE_AS_VECTOR_LOADSTORE_ALIGNMENT_HINTS_ON_Z13 1" >>confdefs.h
++
++fi
++
++
+     ;;
+ esac
+ 
+diff --git a/gcc/configure.ac b/gcc/configure.ac
+index d6f2d5b2ed0..a3211db36c0 100644
+--- a/gcc/configure.ac
++++ b/gcc/configure.ac
+@@ -4878,6 +4878,17 @@ pointers into PC-relative form.])
+       [	.machine z13+vx ],,
+       [AC_DEFINE(HAVE_AS_ARCHITECTURE_MODIFIERS, 1,
+ 	  [Define if your assembler supports architecture modifiers.])])
++    gcc_GAS_CHECK_FEATURE([vector load/store alignment hints],
++      gcc_cv_as_s390_vector_loadstore_alignment_hints, [2,31,0],,
++      [	vl %v24,0(%r15),3 ],,
++      [AC_DEFINE(HAVE_AS_VECTOR_LOADSTORE_ALIGNMENT_HINTS, 1,
++	  [Define if your assembler supports vl/vst/vlm/vstm with an optional alignment hint argument.])])
++    gcc_GAS_CHECK_FEATURE([vector load/store alignment hints on z13],
++      gcc_cv_as_s390_vector_loadstore_alignment_hints_on_z13,, [-mzarch -march=z13],
++      [	vl %v24,0(%r15),3 ],,
++      [AC_DEFINE(HAVE_AS_VECTOR_LOADSTORE_ALIGNMENT_HINTS_ON_Z13, 1,
++	  [Define if your assembler supports vl/vst/vlm/vstm with an optional alignment hint argument on z13.])])
++
+     ;;
+ esac
+ 
 diff --git a/gcc/cp/ChangeLog b/gcc/cp/ChangeLog
 index a525d4f4f9e..311cc43936d 100644
 --- a/gcc/cp/ChangeLog
@@ -12994,6 +13219,77 @@ index 00000000000..a45052e2b03
 +
 +/* { dg_final { scan_assembler_times "vmsumudm" 2 } } */
 +
+diff --git a/gcc/testsuite/gcc.target/s390/vector/align-1.c b/gcc/testsuite/gcc.target/s390/vector/align-1.c
+new file mode 100644
+index 00000000000..6997af2ddcd
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/s390/vector/align-1.c
+@@ -0,0 +1,30 @@
++/* { dg-do compile } */
++/* { dg-options "-O3 -mzarch -march=z13" } */
++
++/* The user alignment ends up in DECL_ALIGN of the VAR_DECL and is
++   currently ignored if it is smaller than the alignment of the type.
++   In this testcase an alignment hint ",3" is emitted also for
++   accessing a4 which is wrong.
++   Hence this testcase currently fails:
++   https://gcc.gnu.org/bugzilla/show_bug.cgi?id=88085 */
++
++typedef int __attribute__((vector_size(16))) v4si;
++
++v4si a4 __attribute__((aligned(4)));
++v4si a8 __attribute__((aligned(8)));
++v4si a16 __attribute__((aligned(16)));
++v4si a32 __attribute__((aligned(32)));
++
++void
++foo (v4si a)
++{
++  a4 += a;  /* vl ...   vst ... */
++  a8 += a;  /* vl ...,3 vst ...,3 */
++  a16 += a; /* vl ...,4 vst ...,4 */
++  a32 += a; /* vl ...,4 vst ...,4 */
++}
++
++/* { dg-final { scan-assembler-times "vl\t%v\[0-9\]*,\[0-9\]*\\(%r\[0-9\]*\\),3\n" 1 } } */
++/* { dg-final { scan-assembler-times "vl\t%v\[0-9\]*,\[0-9\]*\\(%r\[0-9\]*\\),4\n" 2 } } */
++/* { dg-final { scan-assembler-times "vst\t%v\[0-9\]*,\[0-9\]*\\(%r\[0-9\]*\\),3\n" 1 } } */
++/* { dg-final { scan-assembler-times "vst\t%v\[0-9\]*,\[0-9\]*\\(%r\[0-9\]*\\),4" 2 } } */
+diff --git a/gcc/testsuite/gcc.target/s390/vector/align-2.c b/gcc/testsuite/gcc.target/s390/vector/align-2.c
+new file mode 100644
+index 00000000000..00e09d3eadb
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/s390/vector/align-2.c
+@@ -0,0 +1,29 @@
++/* { dg-do compile } */
++/* { dg-options "-O3 -mzarch -march=z13" } */
++
++/* The user alignment ends up in TYPE_ALIGN of the type of the
++   VAR_DECL.  */
++
++typedef int __attribute__((vector_size(16),aligned(4))) v4si_4;
++typedef int __attribute__((vector_size(16),aligned(8))) v4si_8;
++typedef int __attribute__((vector_size(16),aligned(16))) v4si_16;
++typedef int __attribute__((vector_size(16),aligned(32))) v4si_32;
++
++v4si_4 a4;
++v4si_8 a8;
++v4si_16 a16;
++v4si_32 a32;
++
++void
++foo (v4si_8 a)
++{
++  a4 += a;  /* vl ...   vst ... */
++  a8 += a;  /* vl ...,3 vst ...,3 */
++  a16 += a; /* vl ...,4 vst ...,4 */
++  a32 += a; /* vl ...,4 vst ...,4 */
++}
++
++/* { dg-final { scan-assembler-times "vl\t%v\[0-9\]*,\[0-9\]*\\(%r\[0-9\]*\\),3\n" 1 } } */
++/* { dg-final { scan-assembler-times "vl\t%v\[0-9\]*,\[0-9\]*\\(%r\[0-9\]*\\),4\n" 2 } } */
++/* { dg-final { scan-assembler-times "vst\t%v\[0-9\]*,\[0-9\]*\\(%r\[0-9\]*\\),3\n" 1 } } */
++/* { dg-final { scan-assembler-times "vst\t%v\[0-9\]*,\[0-9\]*\\(%r\[0-9\]*\\),4" 2 } } */
 diff --git a/gcc/testsuite/gcc.target/s390/zvector/pr94613.c b/gcc/testsuite/gcc.target/s390/zvector/pr94613.c
 new file mode 100644
 index 00000000000..c3581d82ede
