@@ -323,10 +323,11 @@ Uros Bizjak (3):
       i386: Remove unneeded assignments when triggering SSE exceptions
       alpha: Implement the PR94780 fix for alpha.
 
-Will Schmidt (3):
+Will Schmidt (4):
       rs6000 pragma fix backport from mainline to gcc-8
       Fix wrong codegen for vec_pack_to_short_fp32() builtin
       Add support to enable vmsumudm behind vec_msum builtin.
+      rs6000 improve handling of built-in initialization [PR95952]
 
 diff --git a/ChangeLog b/ChangeLog
 index 659e82a2a51..4062e4cbf57 100644
@@ -8379,7 +8380,7 @@ index eb19c75bfa4..c6753fbfa6c 100644
      RS6000_BTI_V4SI, RS6000_BTI_V8HI, RS6000_BTI_V8HI, RS6000_BTI_V4SI },
    { ALTIVEC_BUILTIN_VEC_VMSUMUHM, ALTIVEC_BUILTIN_VMSUMUHM,
 diff --git a/gcc/config/rs6000/rs6000.c b/gcc/config/rs6000/rs6000.c
-index 8cf6bd54b2f..75d40367a98 100644
+index 8cf6bd54b2f..53490f796cd 100644
 --- a/gcc/config/rs6000/rs6000.c
 +++ b/gcc/config/rs6000/rs6000.c
 @@ -4401,6 +4401,14 @@ rs6000_option_override_internal (bool global_init_p)
@@ -8456,7 +8457,7 @@ index 8cf6bd54b2f..75d40367a98 100644
        def_builtin (d->name, void_ftype_pcvoid_int_int, d->code);
      }
  
-@@ -17996,15 +18012,6 @@ altivec_init_builtins (void)
+@@ -17996,20 +18012,27 @@ altivec_init_builtins (void)
      {
        machine_mode mode1;
        tree type;
@@ -8472,7 +8473,28 @@ index 8cf6bd54b2f..75d40367a98 100644
  
        if (rs6000_overloaded_builtin_p (d->code))
  	mode1 = VOIDmode;
-@@ -18051,15 +18058,6 @@ altivec_init_builtins (void)
+       else
+ 	{
++	  /* PR95952:  Gracefully skip builtins that do not have the icode properly
++	  set, but do have the builtin mask set.  This has occurred in older gcc
++	  builds with older binutils support when binutils refuses code generation
++	  for instructions that it does not support.  This was exposed by changes
++	  allowing all builtins being initialized for better #pragma support.  */
++	  if (d->icode == CODE_FOR_nothing && d->mask)
++	    {
++	      HOST_WIDE_INT builtin_mask = rs6000_builtin_mask;
++	      if (TARGET_DEBUG_BUILTIN)
++		{
++		  fprintf (stderr, "altivec predicate builtin %s skipped", d->name);
++		  fprintf (stderr, " (icode:%d, mask:%lx, builtin_mask:0x%lx\n",
++			   d->icode, d->mask, builtin_mask);
++		}
++	      continue;
++	    }
+ 	  /* Cannot define builtin if the instruction is disabled.  */
+ 	  gcc_assert (d->icode != CODE_FOR_nothing);
+ 	  mode1 = insn_data[d->icode].operand[1].mode;
+@@ -18051,15 +18074,6 @@ altivec_init_builtins (void)
      {
        machine_mode mode0;
        tree type;
