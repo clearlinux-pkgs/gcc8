@@ -58,7 +58,9 @@ Fritz Reese (2):
       Backport form master: Fix fortran/85982 ICE in resolve_component.
       Indicate backport in changelogs from last commit.
 
-GCC Administrator (137):
+GCC Administrator (139):
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -237,12 +239,13 @@ Jason Merrill (8):
 John David Anglin (1):
       Define __BIG_ENDIAN__
 
-Jonathan Wakely (5):
+Jonathan Wakely (6):
       doc: Note that some warnings depend on optimizations (PR 92757)
       libstdc++: Fix std::to_address for debug iterators (PR 93960)
       libstdc++: Document correct feature test macro, __cpp_lib_is_invocable
       libstdc++: Fix broken link to SGI STL FAQ
       libstdc++: Replace pre-release version number in docs
+      PR libstdc++/68737 Do not use vsnprintf on HPUX
 
 Kyrylo Tkachov (2):
       [AArch64] Use __getauxval instead of getauxval in LSE detection code in libgcc
@@ -15728,10 +15731,22 @@ index d2465c6e13a..d08f9c6548c 100644
       ld uses them to relax its checking of ELF gABI access rules for
       COMDAT sections in objects produced by GCC.  */
 diff --git a/libstdc++-v3/ChangeLog b/libstdc++-v3/ChangeLog
-index 1d6f972584a..675ac448998 100644
+index 1d6f972584a..8e62b793cac 100644
 --- a/libstdc++-v3/ChangeLog
 +++ b/libstdc++-v3/ChangeLog
-@@ -1,3 +1,30 @@
+@@ -1,3 +1,42 @@
++2020-07-21  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2019-01-28  Jonathan Wakely  <jwakely@redhat.com>
++
++	PR libstdc++/68737
++	* config/locale/generic/c_locale.h (__convert_from_v)
++	[_GLIBCXX_USE_C99_STDIO]: Also check _GLIBCXX_HAVE_BROKEN_VSNPRINTF.
++	* config/os/hpux/os_defines.h: Define _GLIBCXX_HAVE_BROKEN_VSNPRINTF.
++	* include/bits/locale_facets.tcc (num_put::_M_insert_float)
++	[_GLIBCXX_USE_C99_STDIO]: Also check _GLIBCXX_HAVE_BROKEN_VSNPRINTF.
++
 +2020-05-06  Jonathan Wakely  <jwakely@redhat.com>
 +
 +	* doc/xml/manual/abi.xml (abi.versioning.history): Update 8.0.0 to
@@ -15762,6 +15777,33 @@ index 1d6f972584a..675ac448998 100644
  2020-03-04  Release Manager
  
  	* GCC 8.4.0 released.
+diff --git a/libstdc++-v3/config/locale/generic/c_locale.h b/libstdc++-v3/config/locale/generic/c_locale.h
+index 0d208166063..3045931c840 100644
+--- a/libstdc++-v3/config/locale/generic/c_locale.h
++++ b/libstdc++-v3/config/locale/generic/c_locale.h
+@@ -70,7 +70,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+     __builtin_va_list __args;
+     __builtin_va_start(__args, __fmt);
+ 
+-#if _GLIBCXX_USE_C99_STDIO
++#if _GLIBCXX_USE_C99_STDIO && !_GLIBCXX_HAVE_BROKEN_VSNPRINTF
+     const int __ret = __builtin_vsnprintf(__out, __size, __fmt, __args);
+ #else
+     const int __ret = __builtin_vsprintf(__out, __fmt, __args);
+diff --git a/libstdc++-v3/config/os/hpux/os_defines.h b/libstdc++-v3/config/os/hpux/os_defines.h
+index 1003477fe35..5a9c4faf75d 100644
+--- a/libstdc++-v3/config/os/hpux/os_defines.h
++++ b/libstdc++-v3/config/os/hpux/os_defines.h
+@@ -109,4 +109,9 @@ typedef long int __padding_type;
+ #if defined (__hppa__)
+ #define _GLIBCXX_HAVE_BROKEN_STRTOLD 1
+ #endif
++
++// The vnsprintf function returns -1 when the buffer is too small.
++// See PR libstdc++/68737.
++#define _GLIBCXX_HAVE_BROKEN_VSNPRINTF 1
++
+ #endif
 diff --git a/libstdc++-v3/doc/html/faq.html b/libstdc++-v3/doc/html/faq.html
 index ac99835acf2..18407225d7a 100644
 --- a/libstdc++-v3/doc/html/faq.html
@@ -16364,6 +16406,19 @@ index 7b5b4c41209..3931a7a71f9 100644
      </row>
  
      <row>
+diff --git a/libstdc++-v3/include/bits/locale_facets.tcc b/libstdc++-v3/include/bits/locale_facets.tcc
+index 39da5766075..d5fa91e97d6 100644
+--- a/libstdc++-v3/include/bits/locale_facets.tcc
++++ b/libstdc++-v3/include/bits/locale_facets.tcc
+@@ -992,7 +992,7 @@ _GLIBCXX_BEGIN_NAMESPACE_LDBL
+ 	char __fbuf[16];
+ 	__num_base::_S_format_float(__io, __fbuf, __mod);
+ 
+-#if _GLIBCXX_USE_C99_STDIO
++#if _GLIBCXX_USE_C99_STDIO && !_GLIBCXX_HAVE_BROKEN_VSNPRINTF
+ 	// Precision is always used except for hexfloat format.
+ 	const bool __use_prec =
+ 	  (__io.flags() & ios_base::floatfield) != ios_base::floatfield;
 diff --git a/libstdc++-v3/include/bits/ptr_traits.h b/libstdc++-v3/include/bits/ptr_traits.h
 index 11b6056370a..88261de02d6 100644
 --- a/libstdc++-v3/include/bits/ptr_traits.h
