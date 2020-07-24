@@ -58,7 +58,9 @@ Fritz Reese (2):
       Backport form master: Fix fortran/85982 ICE in resolve_component.
       Indicate backport in changelogs from last commit.
 
-GCC Administrator (139):
+GCC Administrator (141):
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -210,11 +212,12 @@ H.J. Lu (9):
       x86: Update Intel processor detection
       x96: Remove PTA_CLWB from PTA_ICELAKE_CLIENT
 
-Harald Anlauf (4):
+Harald Anlauf (5):
       PR fortran/95689 - ICE in check_sym_interfaces, at fortran/interface.c:2015
       Revert "PR fortran/95689 - ICE in check_sym_interfaces, at fortran/interface.c:2015"
       PR fortran/71706 - ICE on using sync images with -fcheck=bounds
       PR fortran/88379 - ICE with allocatable coarray, class and associate
+      PR fortran/89574 - ICE in conv_function_val, at fortran/trans-expr.c:3792
 
 Iain Sandoe (1):
       Darwin: Fix i686 bootstrap when the assembler supports GOTOFF in data.
@@ -239,13 +242,14 @@ Jason Merrill (8):
 John David Anglin (1):
       Define __BIG_ENDIAN__
 
-Jonathan Wakely (6):
+Jonathan Wakely (7):
       doc: Note that some warnings depend on optimizations (PR 92757)
       libstdc++: Fix std::to_address for debug iterators (PR 93960)
       libstdc++: Document correct feature test macro, __cpp_lib_is_invocable
       libstdc++: Fix broken link to SGI STL FAQ
       libstdc++: Replace pre-release version number in docs
       PR libstdc++/68737 Do not use vsnprintf on HPUX
+      gcc-changelog: Fix typo in output
 
 Kyrylo Tkachov (2):
       [AArch64] Use __getauxval instead of getauxval in LSE detection code in libgcc
@@ -266,7 +270,7 @@ Martin Jambor (2):
       gcc-8 sra: Cap number of sub-access propagations with a param (PR 93435)
       sra-8: Fix sra_modify_expr handling of partial writes (PR 94482)
 
-Martin Liska (13):
+Martin Liska (14):
       Backport 9297e013293e4d332fc7c40859ea4dd9616e0d88
       Backport 55a7380213a5c16120d5c674fb42b38a3d796b57
       Add outline-atomics to target attribute.
@@ -280,6 +284,7 @@ Martin Liska (13):
       Add missing store in emission of asan_stack_free.
       asan: fix RTX emission for ilp32
       gcc-changelog: sync from master.
+      gcc-changelog: fix when somebody reverts a backport
 
 Max Filippov (2):
       xtensa: backport fix for PR target/91880
@@ -348,10 +353,25 @@ index 659e82a2a51..4062e4cbf57 100644
  
  	* GCC 8.4.0 released.
 diff --git a/contrib/ChangeLog b/contrib/ChangeLog
-index e6dc6514fbe..3fb46492c22 100644
+index e6dc6514fbe..d53c71e206b 100644
 --- a/contrib/ChangeLog
 +++ b/contrib/ChangeLog
-@@ -1,3 +1,34 @@
+@@ -1,3 +1,49 @@
++2020-07-23  Martin Liska  <mliska@suse.cz>
++
++	Backported from master:
++	2020-07-23  Martin Liska  <mliska@suse.cz>
++
++	* gcc-changelog/git_commit.py: When reverting a backport,
++	we should print only Revert header.
++
++2020-07-23  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2020-07-17  Jonathan Wakely  <jwakely@redhat.com>
++
++	* gcc-changelog/git_update_version.py: Fix typo.
++
 +2020-07-08  Alexandre Oliva  <oliva@adacore.com>
 +
 +	Backported from master:
@@ -443,10 +463,10 @@ index 00000000000..935425ef813
 +exit(retval)
 diff --git a/contrib/gcc-changelog/git_commit.py b/contrib/gcc-changelog/git_commit.py
 new file mode 100755
-index 00000000000..827976c2f84
+index 00000000000..5a9cc4c7563
 --- /dev/null
 +++ b/contrib/gcc-changelog/git_commit.py
-@@ -0,0 +1,676 @@
+@@ -0,0 +1,677 @@
 +#!/usr/bin/env python3
 +#
 +# This file is part of GCC.
@@ -1077,7 +1097,11 @@ index 00000000000..827976c2f84
 +        for entry in self.changelog_entries:
 +            output = ''
 +            timestamp = entry.datetime
-+            if self.cherry_pick_commit:
++            if self.revert_commit:
++                timestamp = current_timestamp
++                orig_date = self.original_info.date
++                current_timestamp = orig_date.strftime(DATE_FORMAT)
++            elif self.cherry_pick_commit:
 +                info = self.commit_to_info_hook(self.cherry_pick_commit)
 +                # it can happen that it is a cherry-pick for a different
 +                # repository
@@ -1085,10 +1109,6 @@ index 00000000000..827976c2f84
 +                    timestamp = info.date.strftime(DATE_FORMAT)
 +                else:
 +                    timestamp = current_timestamp
-+            elif self.revert_commit:
-+                timestamp = current_timestamp
-+                orig_date = self.original_info.date
-+                current_timestamp = orig_date.strftime(DATE_FORMAT)
 +            elif not timestamp or use_commit_ts:
 +                timestamp = current_timestamp
 +            authors = entry.authors if entry.authors else [self.info.author]
@@ -1098,12 +1118,13 @@ index 00000000000..827976c2f84
 +                    authors.append(author)
 +
 +            if self.cherry_pick_commit or self.revert_commit:
-+                output += self.format_authors_in_changelog([self.info.author],
++                original_author = self.original_info.author
++                output += self.format_authors_in_changelog([original_author],
 +                                                           current_timestamp)
-+                if self.cherry_pick_commit:
-+                    output += '\tBackported from master:\n'
-+                else:
++                if self.revert_commit:
 +                    output += '\tRevert:\n'
++                else:
++                    output += '\tBackported from master:\n'
 +                output += self.format_authors_in_changelog(authors,
 +                                                           timestamp, '\t')
 +            else:
@@ -1322,7 +1343,7 @@ index 00000000000..90edc3ce3d8
 +    return parsed_commits
 diff --git a/contrib/gcc-changelog/git_update_version.py b/contrib/gcc-changelog/git_update_version.py
 new file mode 100755
-index 00000000000..ac1b206d238
+index 00000000000..d2cadb8811c
 --- /dev/null
 +++ b/contrib/gcc-changelog/git_update_version.py
 @@ -0,0 +1,145 @@
@@ -1367,7 +1388,7 @@ index 00000000000..ac1b206d238
 +        raise AssertionError()
 +    for entry, output in git_commit.to_changelog_entries(use_commit_ts=True):
 +        full_path = os.path.join(folder, entry, 'ChangeLog')
-+        print('writting to %s' % full_path)
++        print('writing to %s' % full_path)
 +        if os.path.exists(full_path):
 +            with open(full_path) as f:
 +                content = f.read()
@@ -9476,10 +9497,19 @@ index bed6c981852..d496f57547a 100644
  
  /* Examine CFI and return true if a cfi label and set_loc is needed
 diff --git a/gcc/fortran/ChangeLog b/gcc/fortran/ChangeLog
-index d3be7538ff7..537473fa8ae 100644
+index d3be7538ff7..3dac343f4d8 100644
 --- a/gcc/fortran/ChangeLog
 +++ b/gcc/fortran/ChangeLog
-@@ -1,3 +1,169 @@
+@@ -1,3 +1,178 @@
++2020-07-23  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2020-07-21  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/89574
++	* trans-decl.c (gfc_get_extern_function_decl): Check whether a
++	symbol belongs to a different module.
++
 +2020-07-05  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
@@ -10050,7 +10080,7 @@ index 5ef86565d8d..284f1791233 100644
  tree gfc_conv_descriptor_data_get (tree);
  tree gfc_conv_descriptor_data_addr (tree);
 diff --git a/gcc/fortran/trans-decl.c b/gcc/fortran/trans-decl.c
-index 2dc350fbb5a..3780d27a9f6 100644
+index 2dc350fbb5a..46cc742e23f 100644
 --- a/gcc/fortran/trans-decl.c
 +++ b/gcc/fortran/trans-decl.c
 @@ -1673,9 +1673,7 @@ gfc_get_symbol_decl (gfc_symbol * sym)
@@ -10075,7 +10105,26 @@ index 2dc350fbb5a..3780d27a9f6 100644
    if (sym->backend_decl)
      return sym->backend_decl;
  
-@@ -3142,6 +3144,9 @@ gfc_get_fake_result_decl (gfc_symbol * sym, int parent_flag)
+@@ -2062,12 +2064,17 @@ gfc_get_extern_function_decl (gfc_symbol * sym, gfc_actual_arglist *actual_args)
+       if (gsym && !gsym->bind_c)
+ 	gsym = NULL;
+     }
+-  else
++  else if (sym->module == NULL)
+     {
+       gsym = gfc_find_gsymbol (gfc_gsym_root, sym->name);
+       if (gsym && gsym->bind_c)
+ 	gsym = NULL;
+     }
++  else
++    {
++      /* Procedure from a different module.  */
++      gsym = NULL;
++    }
+ 
+   if (gsym && !gsym->defined)
+     gsym = NULL;
+@@ -3142,6 +3149,9 @@ gfc_get_fake_result_decl (gfc_symbol * sym, int parent_flag)
    else
      current_fake_result_decl = build_tree_list (NULL, decl);
  
@@ -10085,7 +10134,7 @@ index 2dc350fbb5a..3780d27a9f6 100644
    return decl;
  }
  
-@@ -5873,7 +5878,7 @@ generate_local_decl (gfc_symbol * sym)
+@@ -5873,7 +5883,7 @@ generate_local_decl (gfc_symbol * sym)
        /* Unused procedure passed as dummy argument.  */
        if (sym->attr.flavor == FL_PROCEDURE)
  	{
@@ -10555,10 +10604,18 @@ index d9c66d42c26..0aa78a31411 100644
  extern void mark_end_of_function_resources (rtx, bool);
  extern void init_resource_info (rtx_insn *);
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index ab652ddc144..3ea6f67a0ca 100644
+index ab652ddc144..ca83f5c7a07 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,404 @@
+@@ -1,3 +1,412 @@
++2020-07-23  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2020-07-21  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/89574
++	* gfortran.dg/pr89574.f90: New file.
++
 +2020-07-16  Stefan Schulze Frielinghaus  <stefansf@linux.ibm.com>
 +
 +	Backported from master:
@@ -14047,6 +14104,41 @@ index 00000000000..48a23af50c5
 +  associate (y => x)
 +  end associate
 +end
+diff --git a/gcc/testsuite/gfortran.dg/pr89574.f90 b/gcc/testsuite/gfortran.dg/pr89574.f90
+new file mode 100644
+index 00000000000..48dd0680a48
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/pr89574.f90
+@@ -0,0 +1,29 @@
++! { dg-do compile }
++! PR fortran/89574 - ICE in conv_function_val, at fortran/trans-expr.c:3792
++
++module mod1
++contains
++  subroutine init
++  end subroutine
++end module
++
++module mod2
++contains
++  subroutine init
++  end subroutine
++end module
++
++module init
++  use mod1, only : test_init1 => init
++  use mod2, only : test_init2 => init
++  implicit none
++contains
++  subroutine sub
++    call test_init1
++    call test_init2
++    call init
++  contains
++    subroutine init
++    end subroutine
++  end subroutine
++end module
 diff --git a/gcc/testsuite/gfortran.dg/pr91913.f90 b/gcc/testsuite/gfortran.dg/pr91913.f90
 new file mode 100644
 index 00000000000..7d5477ac0c3
