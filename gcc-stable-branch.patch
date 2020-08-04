@@ -61,7 +61,12 @@ Fritz Reese (2):
       Backport form master: Fix fortran/85982 ICE in resolve_component.
       Indicate backport in changelogs from last commit.
 
-GCC Administrator (147):
+GCC Administrator (152):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -251,7 +256,7 @@ Jason Merrill (8):
 John David Anglin (1):
       Define __BIG_ENDIAN__
 
-Jonathan Wakely (7):
+Jonathan Wakely (8):
       doc: Note that some warnings depend on optimizations (PR 92757)
       libstdc++: Fix std::to_address for debug iterators (PR 93960)
       libstdc++: Document correct feature test macro, __cpp_lib_is_invocable
@@ -259,6 +264,7 @@ Jonathan Wakely (7):
       libstdc++: Replace pre-release version number in docs
       PR libstdc++/68737 Do not use vsnprintf on HPUX
       gcc-changelog: Fix typo in output
+      cpp: Do not use @dots for ... tokens in code examples
 
 Kyrylo Tkachov (2):
       [AArch64] Use __getauxval instead of getauxval in LSE detection code in libgcc
@@ -5161,10 +5167,18 @@ index a2f28f43be3..6da4de57dc6 100644
 -8.4.0
 +8.4.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 142499c563c..2f8b2d6361e 100644
+index 142499c563c..3467348f814 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,642 @@
+@@ -1,3 +1,650 @@
++2020-08-03  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2020-08-03  Jonathan Wakely  <jwakely@redhat.com>
++
++	* doc/cpp.texi (Variadic Macros): Use the exact ... token in
++	code examples.
++
 +2020-07-17  Will Schmidt  <will_schmidt@vnet.ibm.com>
 +
 +	PR target/95952
@@ -9327,6 +9341,69 @@ index 409e86166c1..2d38310f1fb 100644
  	  current_template_parms = save_parms;
  	}
  
+diff --git a/gcc/doc/cpp.texi b/gcc/doc/cpp.texi
+index 4297c0ca9ce..6c6ab06b407 100644
+--- a/gcc/doc/cpp.texi
++++ b/gcc/doc/cpp.texi
+@@ -1632,7 +1632,7 @@ a function can.  The syntax for defining the macro is similar to that of
+ a function.  Here is an example:
+ 
+ @smallexample
+-#define eprintf(@dots{}) fprintf (stderr, __VA_ARGS__)
++#define eprintf(...) fprintf (stderr, __VA_ARGS__)
+ @end smallexample
+ 
+ This kind of macro is called @dfn{variadic}.  When the macro is invoked,
+@@ -1656,11 +1656,11 @@ below for an important special case for @samp{##}.)
+ If your macro is complicated, you may want a more descriptive name for
+ the variable argument than @code{@w{__VA_ARGS__}}.  CPP permits
+ this, as an extension.  You may write an argument name immediately
+-before the @samp{@dots{}}; that name is used for the variable argument.
++before the @samp{...}; that name is used for the variable argument.
+ The @code{eprintf} macro above could be written
+ 
+ @smallexample
+-#define eprintf(args@dots{}) fprintf (stderr, args)
++#define eprintf(args...) fprintf (stderr, args)
+ @end smallexample
+ 
+ @noindent
+@@ -1671,7 +1671,7 @@ You can have named arguments as well as variable arguments in a variadic
+ macro.  We could define @code{eprintf} like this, instead:
+ 
+ @smallexample
+-#define eprintf(format, @dots{}) fprintf (stderr, format, __VA_ARGS__)
++#define eprintf(format, ...) fprintf (stderr, format, __VA_ARGS__)
+ @end smallexample
+ 
+ @noindent
+@@ -1710,7 +1710,7 @@ invocation expands to its argument; but if the variable argument does
+ not have any tokens, the @code{@w{__VA_OPT__}} expands to nothing:
+ 
+ @smallexample
+-#define eprintf(format, @dots{}) \
++#define eprintf(format, ...) \
+   fprintf (stderr, format __VA_OPT__(,) __VA_ARGS__)
+ @end smallexample
+ 
+@@ -1723,7 +1723,7 @@ the introduction of @code{@w{__VA_OPT__}}, this extension remains
+ supported in GNU CPP, for backward compatibility.  If you write
+ 
+ @smallexample
+-#define eprintf(format, @dots{}) fprintf (stderr, format, ##__VA_ARGS__)
++#define eprintf(format, ...) fprintf (stderr, format, ##__VA_ARGS__)
+ @end smallexample
+ 
+ @noindent
+@@ -1759,7 +1759,7 @@ replacement list of a variadic macro.
+ Variadic macros became a standard part of the C language with C99.  
+ GNU CPP previously supported them
+ with a named variable argument
+-(@samp{args@dots{}}, not @samp{@dots{}} and @code{@w{__VA_ARGS__}}), which
++(@samp{args...}, not @samp{...} and @code{@w{__VA_ARGS__}}), which
+ is still supported for backward compatibility.
+ 
+ @node Predefined Macros
 diff --git a/gcc/doc/extend.texi b/gcc/doc/extend.texi
 index 2ab45763a6b..5cd33772104 100644
 --- a/gcc/doc/extend.texi
