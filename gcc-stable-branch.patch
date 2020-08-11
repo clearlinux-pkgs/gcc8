@@ -61,7 +61,8 @@ Fritz Reese (2):
       Backport form master: Fix fortran/85982 ICE in resolve_component.
       Indicate backport in changelogs from last commit.
 
-GCC Administrator (158):
+GCC Administrator (159):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -16793,10 +16794,14 @@ index d2465c6e13a..d08f9c6548c 100644
       ld uses them to relax its checking of ELF gABI access rules for
       COMDAT sections in objects produced by GCC.  */
 diff --git a/libstdc++-v3/ChangeLog b/libstdc++-v3/ChangeLog
-index 1d6f972584a..eea7612e325 100644
+index 1d6f972584a..8cd063bfa9e 100644
 --- a/libstdc++-v3/ChangeLog
 +++ b/libstdc++-v3/ChangeLog
-@@ -1,3 +1,96 @@
+@@ -1,3 +1,100 @@
++2020-08-10  Jonathan Wakely  <jwakely@redhat.com>
++
++	* src/c++17/Makefile.in: Remove unused file.
++
 +2020-08-07  Jonathan Wakely  <jwakely@redhat.com>
 +
 +	Backported from master:
