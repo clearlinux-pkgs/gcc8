@@ -61,7 +61,8 @@ Fritz Reese (2):
       Backport form master: Fix fortran/85982 ICE in resolve_component.
       Indicate backport in changelogs from last commit.
 
-GCC Administrator (159):
+GCC Administrator (160):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -279,6 +280,9 @@ Jonathan Wakely (14):
       Fix filesystem::last_write_time failure with 32-bit time_t
       libstdc++: Fix FS-dependent filesystem tests
       libstdc++: Remove unused Makefile.in
+
+Kewen Lin (1):
+      testsuite: Add -fno-common to pr82374.c [PR94077]
 
 Kyrylo Tkachov (2):
       [AArch64] Use __getauxval instead of getauxval in LSE detection code in libgcc
@@ -11933,6 +11937,21 @@ index 00000000000..42271ad8bce
 +  if (di[0] != 63 || di[1] != 38)
 +    abort();
 +}
+diff --git a/gcc/testsuite/gcc.dg/gomp/pr82374.c b/gcc/testsuite/gcc.dg/gomp/pr82374.c
+index 453266ed84e..e63a2f5c62d 100644
+--- a/gcc/testsuite/gcc.dg/gomp/pr82374.c
++++ b/gcc/testsuite/gcc.dg/gomp/pr82374.c
+@@ -1,6 +1,9 @@
+ /* PR tree-optimization/82374 */
+ /* { dg-do compile } */
+-/* { dg-options "-O2 -fno-tree-vectorize -fdump-tree-vect-details" } */
++/* Option -fno-common makes vectorizer able to force alignment and ensures
++   vectorization can succeed even on targets lacking of unaligned vector
++   load/store.  */
++/* { dg-options "-O2 -fno-tree-vectorize -fdump-tree-vect-details -fno-common" } */
+ /* { dg-additional-options "-mavx -mno-avx2" { target i?86-*-* x86_64-*-* } } */
+ /* { dg-additional-options "-mvsx" { target powerpc_vsx_ok } } */
+ 
 diff --git a/gcc/testsuite/gcc.dg/pr94368.c b/gcc/testsuite/gcc.dg/pr94368.c
 new file mode 100644
 index 00000000000..1267b822098
