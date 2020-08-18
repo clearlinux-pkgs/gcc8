@@ -61,7 +61,12 @@ Fritz Reese (2):
       Backport form master: Fix fortran/85982 ICE in resolve_component.
       Indicate backport in changelogs from last commit.
 
-GCC Administrator (161):
+GCC Administrator (166):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -364,10 +369,11 @@ Thomas Schwinge (2):
 Tobias Burnus (1):
       [Fortran] Disable front-end optimization for OpenACC atomic (PR93462)
 
-Uros Bizjak (3):
+Uros Bizjak (4):
       i386: Require OPTION_MASK_ISA_SSE2 for __builtin_ia32_movq128 [PR94603]
       i386: Remove unneeded assignments when triggering SSE exceptions
       alpha: Implement the PR94780 fix for alpha.
+      i386: Fix restore_stack_nonlocal expander [PR96536].
 
 Will Schmidt (4):
       rs6000 pragma fix backport from mainline to gcc-8
@@ -8280,6 +8286,23 @@ index aba63fb7a80..63a54558a65 100644
  
  /* Switch to init or fini section via SECTION_OP, emit a call to FUNC,
     and switch back.  For x86 we do this only to save a few bytes that
+diff --git a/gcc/config/i386/i386.md b/gcc/config/i386/i386.md
+index 2bb58236d88..11d69e997bb 100644
+--- a/gcc/config/i386/i386.md
++++ b/gcc/config/i386/i386.md
+@@ -18596,8 +18596,11 @@
+       emit_insn (tmp);
+ 
+       /* Compare and jump over adjustment code.  */
+-      noadj_label = gen_label_rtx ();
++      tmp = gen_rtx_COMPARE (CCZmode, reg_ssp, const0_rtx);
+       flags = gen_rtx_REG (CCZmode, FLAGS_REG);
++      emit_insn (gen_rtx_SET (flags, tmp));
++
++      noadj_label = gen_label_rtx ();
+       tmp = gen_rtx_EQ (VOIDmode, flags, const0_rtx);
+       tmp = gen_rtx_IF_THEN_ELSE (VOIDmode, tmp,
+ 				  gen_rtx_LABEL_REF (VOIDmode, noadj_label),
 diff --git a/gcc/config/pa/pa.h b/gcc/config/pa/pa.h
 index 232495bd719..383e8a9bb1a 100644
 --- a/gcc/config/pa/pa.h
