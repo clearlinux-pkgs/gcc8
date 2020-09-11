@@ -61,7 +61,8 @@ Fritz Reese (2):
       Backport form master: Fix fortran/85982 ICE in resolve_component.
       Indicate backport in changelogs from last commit.
 
-GCC Administrator (189):
+GCC Administrator (190):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -295,7 +296,7 @@ Jason Merrill (8):
 John David Anglin (1):
       Define __BIG_ENDIAN__
 
-Jonathan Wakely (14):
+Jonathan Wakely (16):
       doc: Note that some warnings depend on optimizations (PR 92757)
       libstdc++: Fix std::to_address for debug iterators (PR 93960)
       libstdc++: Document correct feature test macro, __cpp_lib_is_invocable
@@ -310,6 +311,8 @@ Jonathan Wakely (14):
       Fix filesystem::last_write_time failure with 32-bit time_t
       libstdc++: Fix FS-dependent filesystem tests
       libstdc++: Remove unused Makefile.in
+      libstdc++: Enable assertions in constexpr string_view members [PR 71960]
+      libstdc++: Fix is_trivially_constructible (PR 94033)
 
 Kewen Lin (1):
       testsuite: Add -fno-common to pr82374.c [PR94077]
@@ -18803,6 +18806,157 @@ index 705f76331b5..c212670b6ca 100644
  
    inline int
    path::compare(const string_type& __s) const { return compare(path(__s)); }
+diff --git a/libstdc++-v3/include/experimental/string_view b/libstdc++-v3/include/experimental/string_view
+index 2bbd9aa8a0a..107d801d8ee 100644
+--- a/libstdc++-v3/include/experimental/string_view
++++ b/libstdc++-v3/include/experimental/string_view
+@@ -178,8 +178,7 @@ inline namespace fundamentals_v1
+       constexpr const _CharT&
+       operator[](size_type __pos) const
+       {
+-	// TODO: Assert to restore in a way compatible with the constexpr.
+-	// __glibcxx_assert(__pos < this->_M_len);
++	__glibcxx_assert(__pos < this->_M_len);
+ 	return *(this->_M_str + __pos);
+       }
+ 
+@@ -198,16 +197,14 @@ inline namespace fundamentals_v1
+       constexpr const _CharT&
+       front() const
+       {
+-	// TODO: Assert to restore in a way compatible with the constexpr.
+-	// __glibcxx_assert(this->_M_len > 0);
++	__glibcxx_assert(this->_M_len > 0);
+ 	return *this->_M_str;
+       }
+ 
+       constexpr const _CharT&
+       back() const
+       {
+-	// TODO: Assert to restore in a way compatible with the constexpr.
+-	// __glibcxx_assert(this->_M_len > 0);
++	__glibcxx_assert(this->_M_len > 0);
+ 	return *(this->_M_str + this->_M_len - 1);
+       }
+ 
+diff --git a/libstdc++-v3/include/std/string_view b/libstdc++-v3/include/std/string_view
+index 96962e39bf4..412cc17de24 100644
+--- a/libstdc++-v3/include/std/string_view
++++ b/libstdc++-v3/include/std/string_view
+@@ -169,8 +169,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+       constexpr const _CharT&
+       operator[](size_type __pos) const noexcept
+       {
+-	// TODO: Assert to restore in a way compatible with the constexpr.
+-	// __glibcxx_assert(__pos < this->_M_len);
++	__glibcxx_assert(__pos < this->_M_len);
+ 	return *(this->_M_str + __pos);
+       }
+ 
+@@ -187,16 +186,14 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+       constexpr const _CharT&
+       front() const noexcept
+       {
+-	// TODO: Assert to restore in a way compatible with the constexpr.
+-	// __glibcxx_assert(this->_M_len > 0);
++	__glibcxx_assert(this->_M_len > 0);
+ 	return *this->_M_str;
+       }
+ 
+       constexpr const _CharT&
+       back() const noexcept
+       {
+-	// TODO: Assert to restore in a way compatible with the constexpr.
+-	// __glibcxx_assert(this->_M_len > 0);
++	__glibcxx_assert(this->_M_len > 0);
+ 	return *(this->_M_str + this->_M_len - 1);
+       }
+ 
+diff --git a/libstdc++-v3/include/std/type_traits b/libstdc++-v3/include/std/type_traits
+index e0394179963..6c32dd4a51f 100644
+--- a/libstdc++-v3/include/std/type_traits
++++ b/libstdc++-v3/include/std/type_traits
+@@ -915,55 +915,48 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+     : public __is_move_constructible_impl<_Tp>
+     { };
+ 
+-  template<typename _Tp>
+-    struct __is_nt_default_constructible_atom
+-    : public integral_constant<bool, noexcept(_Tp())>
++  template<bool, typename _Tp, typename... _Args>
++    struct __is_nt_constructible_impl
++    : public false_type
+     { };
+ 
+-  template<typename _Tp, bool = is_array<_Tp>::value>
+-    struct __is_nt_default_constructible_impl;
++  template<typename _Tp, typename... _Args>
++    struct __is_nt_constructible_impl<true, _Tp, _Args...>
++    : public __bool_constant<noexcept(_Tp(std::declval<_Args>()...))>
++    { };
+ 
+-  template<typename _Tp>
+-    struct __is_nt_default_constructible_impl<_Tp, true>
+-    : public __and_<__is_array_known_bounds<_Tp>,
+-		    __is_nt_default_constructible_atom<typename
+-                      remove_all_extents<_Tp>::type>>
++  template<typename _Tp, typename _Arg>
++    struct __is_nt_constructible_impl<true, _Tp, _Arg>
++    : public __bool_constant<noexcept(static_cast<_Tp>(std::declval<_Arg>()))>
+     { };
+ 
+   template<typename _Tp>
+-    struct __is_nt_default_constructible_impl<_Tp, false>
+-    : public __is_nt_default_constructible_atom<_Tp>
++    struct __is_nt_constructible_impl<true, _Tp>
++    : public __bool_constant<noexcept(_Tp())>
+     { };
+ 
+-  /// is_nothrow_default_constructible
+-  template<typename _Tp>
+-    struct is_nothrow_default_constructible
+-    : public __and_<is_default_constructible<_Tp>,
+-                    __is_nt_default_constructible_impl<_Tp>>
++  template<typename _Tp, size_t _Num>
++    struct __is_nt_constructible_impl<true, _Tp[_Num]>
++    : public __bool_constant<noexcept(typename remove_all_extents<_Tp>::type())>
+     { };
+ 
+   template<typename _Tp, typename... _Args>
+-    struct __is_nt_constructible_impl
+-    : public integral_constant<bool, noexcept(_Tp(declval<_Args>()...))>
+-    { };
++    using __is_nothrow_constructible_impl
++      = __is_nt_constructible_impl<__is_constructible(_Tp, _Args...),
++				   _Tp, _Args...>;
+ 
+-  template<typename _Tp, typename _Arg>
+-    struct __is_nt_constructible_impl<_Tp, _Arg>
+-    : public integral_constant<bool,
+-                               noexcept(static_cast<_Tp>(declval<_Arg>()))>
++  /// is_nothrow_constructible
++  template<typename _Tp, typename... _Args>
++    struct is_nothrow_constructible
++    : public __is_nothrow_constructible_impl<_Tp, _Args...>::type
+     { };
+ 
++  /// is_nothrow_default_constructible
+   template<typename _Tp>
+-    struct __is_nt_constructible_impl<_Tp>
+-    : public is_nothrow_default_constructible<_Tp>
++    struct is_nothrow_default_constructible
++    : public __is_nothrow_constructible_impl<_Tp>::type
+     { };
+ 
+-  /// is_nothrow_constructible
+-  template<typename _Tp, typename... _Args>
+-    struct is_nothrow_constructible
+-    : public __and_<is_constructible<_Tp, _Args...>,
+-		    __is_nt_constructible_impl<_Tp, _Args...>>
+-    { };
+ 
+   template<typename _Tp, bool = __is_referenceable<_Tp>::value>
+     struct __is_nothrow_copy_constructible_impl;
 diff --git a/libstdc++-v3/src/c++17/Makefile.in b/libstdc++-v3/src/c++17/Makefile.in
 deleted file mode 100644
 index 26a4713831d..00000000000
@@ -19597,6 +19751,118 @@ index 6d0bec48d44..8f3191c1a71 100644
    std::string buf(st.st_size ? st.st_size + 1 : 128, '\0');
    do
      {
+diff --git a/libstdc++-v3/testsuite/20_util/is_nothrow_constructible/94003.cc b/libstdc++-v3/testsuite/20_util/is_nothrow_constructible/94003.cc
+new file mode 100644
+index 00000000000..392a0878ba5
+--- /dev/null
++++ b/libstdc++-v3/testsuite/20_util/is_nothrow_constructible/94003.cc
+@@ -0,0 +1,46 @@
++// Copyright (C) 2020 Free Software Foundation, Inc.
++//
++// This file is part of the GNU ISO C++ Library.  This library is free
++// software; you can redistribute it and/or modify it under the
++// terms of the GNU General Public License as published by the
++// Free Software Foundation; either version 3, or (at your option)
++// any later version.
++
++// This library is distributed in the hope that it will be useful,
++// but WITHOUT ANY WARRANTY; without even the implied warranty of
++// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++// GNU General Public License for more details.
++
++// You should have received a copy of the GNU General Public License along
++// with this library; see the file COPYING3.  If not see
++// <http://www.gnu.org/licenses/>.
++
++// { dg-options "-std=gnu++17" }
++// { dg-do compile { target c++17 } }
++
++#include <optional>
++#include <tuple>
++
++template <bool B> struct abc {};
++
++template <typename T>
++
++struct future : public abc<std::is_trivially_constructible_v<std::tuple<T>>> {};
++
++class mutation {
++  mutation();
++  friend class std::optional<mutation>;
++};
++
++using mutation_opt = std::optional<mutation>;
++
++future<mutation_opt> foo();
++
++template <typename Consumer> future<mutation_opt> consume_partitions() {
++  return foo();
++}
++
++future<mutation_opt> bar() { return consume_partitions<int>(); }
++
++future<mutation> zed();
++future<mutation> apply_counter_update() { return zed(); }
+diff --git a/libstdc++-v3/testsuite/20_util/is_nothrow_default_constructible/96999.cc b/libstdc++-v3/testsuite/20_util/is_nothrow_default_constructible/96999.cc
+new file mode 100644
+index 00000000000..9ec42760051
+--- /dev/null
++++ b/libstdc++-v3/testsuite/20_util/is_nothrow_default_constructible/96999.cc
+@@ -0,0 +1,54 @@
++// Copyright (C) 2020 Free Software Foundation, Inc.
++//
++// This file is part of the GNU ISO C++ Library.  This library is free
++// software; you can redistribute it and/or modify it under the
++// terms of the GNU General Public License as published by the
++// Free Software Foundation; either version 3, or (at your option)
++// any later version.
++
++// This library is distributed in the hope that it will be useful,
++// but WITHOUT ANY WARRANTY; without even the implied warranty of
++// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++// GNU General Public License for more details.
++
++// You should have received a copy of the GNU General Public License along
++// with this library; see the file COPYING3.  If not see
++// <http://www.gnu.org/licenses/>.
++
++// { dg-options "-std=gnu++17" }
++// { dg-do compile { target c++17 } }
++
++// PR libstdc++/96999
++
++#include <variant>
++#include <string>
++
++struct Foo {
++public:
++  explicit Foo(int) noexcept {}
++  Foo(Foo &&) noexcept = default;
++  Foo &operator=(Foo &&) = default;
++private:
++  Foo() noexcept {}
++};
++
++struct Boo {
++public:
++  explicit Boo(int) noexcept {}
++  Boo(Boo &&) noexcept = default;
++  Boo &operator=(Boo &&) = default;
++private:
++  Boo() noexcept {}
++};
++
++
++template<bool X>
++std::variant<Foo, Boo> g(int v, int x) {
++ return  v == 0 ? std::variant<Foo, Boo>{Foo{x}} :
++                                 std::variant<Foo, Boo>{Boo{x}};
++}
++
++int main()
++{
++  std::variant<std::variant<Foo, Boo>, std::string> err{std::string("aaa")};
++}
 diff --git a/libstdc++-v3/testsuite/20_util/to_address/1_neg.cc b/libstdc++-v3/testsuite/20_util/to_address/1_neg.cc
 index e5681de588f..3346253f2a8 100644
 --- a/libstdc++-v3/testsuite/20_util/to_address/1_neg.cc
