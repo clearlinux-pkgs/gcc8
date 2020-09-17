@@ -61,7 +61,8 @@ Fritz Reese (2):
       Backport form master: Fix fortran/85982 ICE in resolve_component.
       Indicate backport in changelogs from last commit.
 
-GCC Administrator (195):
+GCC Administrator (196):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -423,11 +424,12 @@ Uros Bizjak (4):
       alpha: Implement the PR94780 fix for alpha.
       i386: Fix restore_stack_nonlocal expander [PR96536].
 
-Will Schmidt (4):
+Will Schmidt (5):
       rs6000 pragma fix backport from mainline to gcc-8
       Fix wrong codegen for vec_pack_to_short_fp32() builtin
       Add support to enable vmsumudm behind vec_msum builtin.
       rs6000 improve handling of built-in initialization [PR95952]
+      Fix vector long long subtype (PR96139)
 
 diff --git a/ChangeLog b/ChangeLog
 index 659e82a2a51..4062e4cbf57 100644
@@ -5240,10 +5242,187 @@ index a2f28f43be3..6da4de57dc6 100644
 -8.4.0
 +8.4.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 142499c563c..98b0020e8a5 100644
+index 142499c563c..7275a7d4567 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,704 @@
+@@ -1,3 +1,881 @@
++2020-09-16  Will Schmidt  <will_schmidt@vnet.ibm.com>
++
++	PR target/96139
++	* config/rs6000/rs6000.c (rs6000_init_builtin): Update V2DI_type_node
++	  and unsigned_V2DI_type_node definitions.
++
++2020-09-16  Sylvia Taylor  <sylvia.taylor@arm.com>
++
++	Backported from master:
++	2019-08-22  Sylvia Taylor  <sylvia.taylor@arm.com>
++
++	* config/aarch64/aarch64-simd-builtins.def:
++	(ld1x4): New.
++	(st1x4): Likewise.
++	* config/aarch64/aarch64-simd.md:
++	(aarch64_ld1x4<VALLDIF:mode>): New pattern.
++	(aarch64_st1x4<VALLDIF:mode>): Likewise.
++	(aarch64_ld1_x4_<mode>): Likewise.
++	(aarch64_st1_x4_<mode>): Likewise.
++	* config/aarch64/arm_neon.h:
++	(vld1_s8_x4): New function.
++	(vld1q_s8_x4): Likewise.
++	(vld1_s16_x4): Likewise.
++	(vld1q_s16_x4): Likewise.
++	(vld1_s32_x4): Likewise.
++	(vld1q_s32_x4): Likewise.
++	(vld1_u8_x4): Likewise.
++	(vld1q_u8_x4): Likewise.
++	(vld1_u16_x4): Likewise.
++	(vld1q_u16_x4): Likewise.
++	(vld1_u32_x4): Likewise.
++	(vld1q_u32_x4): Likewise.
++	(vld1_f16_x4): Likewise.
++	(vld1q_f16_x4): Likewise.
++	(vld1_f32_x4): Likewise.
++	(vld1q_f32_x4): Likewise.
++	(vld1_p8_x4): Likewise.
++	(vld1q_p8_x4): Likewise.
++	(vld1_p16_x4): Likewise.
++	(vld1q_p16_x4): Likewise.
++	(vld1_s64_x4): Likewise.
++	(vld1_u64_x4): Likewise.
++	(vld1_p64_x4): Likewise.
++	(vld1q_s64_x4): Likewise.
++	(vld1q_u64_x4): Likewise.
++	(vld1q_p64_x4): Likewise.
++	(vld1_f64_x4): Likewise.
++	(vld1q_f64_x4): Likewise.
++	(vst1_s8_x4): Likewise.
++	(vst1q_s8_x4): Likewise.
++	(vst1_s16_x4): Likewise.
++	(vst1q_s16_x4): Likewise.
++	(vst1_s32_x4): Likewise.
++	(vst1q_s32_x4): Likewise.
++	(vst1_u8_x4): Likewise.
++	(vst1q_u8_x4): Likewise.
++	(vst1_u16_x4): Likewise.
++	(vst1q_u16_x4): Likewise.
++	(vst1_u32_x4): Likewise.
++	(vst1q_u32_x4): Likewise.
++	(vst1_f16_x4): Likewise.
++	(vst1q_f16_x4): Likewise.
++	(vst1_f32_x4): Likewise.
++	(vst1q_f32_x4): Likewise.
++	(vst1_p8_x4): Likewise.
++	(vst1q_p8_x4): Likewise.
++	(vst1_p16_x4): Likewise.
++	(vst1q_p16_x4): Likewise.
++	(vst1_s64_x4): Likewise.
++	(vst1_u64_x4): Likewise.
++	(vst1_p64_x4): Likewise.
++	(vst1q_s64_x4): Likewise.
++	(vst1q_u64_x4): Likewise.
++	(vst1q_p64_x4): Likewise.
++	(vst1_f64_x4): Likewise.
++	(vst1q_f64_x4): Likewise.
++
++2020-09-16  Sameera Deshpande  <sameera.deshpande@linaro.org>
++
++	Backported from master:
++	2018-05-31  Sameera Deshpande  <sameera.deshpande@linaro.org>
++
++	* config/aarch64/aarch64-simd-builtins.def (ld1x3): New.
++	(st1x2): Likewise.
++	(st1x3): Likewise.
++	* config/aarch64/aarch64-simd.md
++	(aarch64_ld1x3<VALLDIF:mode>): New pattern.
++	(aarch64_ld1_x3_<mode>): Likewise
++	(aarch64_st1x2<VALLDIF:mode>): Likewise
++	(aarch64_st1_x2_<mode>): Likewise
++	(aarch64_st1x3<VALLDIF:mode>): Likewise
++	(aarch64_st1_x3_<mode>): Likewise
++	* config/aarch64/arm_neon.h (vld1_u8_x3): New function.
++	(vld1_s8_x3): Likewise.
++	(vld1_u16_x3): Likewise.
++	(vld1_s16_x3): Likewise.
++	(vld1_u32_x3): Likewise.
++	(vld1_s32_x3): Likewise.
++	(vld1_u64_x3): Likewise.
++	(vld1_s64_x3): Likewise.
++	(vld1_f16_x3): Likewise.
++	(vld1_f32_x3): Likewise.
++	(vld1_f64_x3): Likewise.
++	(vld1_p8_x3): Likewise.
++	(vld1_p16_x3): Likewise.
++	(vld1_p64_x3): Likewise.
++	(vld1q_u8_x3): Likewise.
++	(vld1q_s8_x3): Likewise.
++	(vld1q_u16_x3): Likewise.
++	(vld1q_s16_x3): Likewise.
++	(vld1q_u32_x3): Likewise.
++	(vld1q_s32_x3): Likewise.
++	(vld1q_u64_x3): Likewise.
++	(vld1q_s64_x3): Likewise.
++	(vld1q_f16_x3): Likewise.
++	(vld1q_f32_x3): Likewise.
++	(vld1q_f64_x3): Likewise.
++	(vld1q_p8_x3): Likewise.
++	(vld1q_p16_x3): Likewise.
++	(vld1q_p64_x3): Likewise.
++	(vst1_s64_x2): Likewise.
++	(vst1_u64_x2): Likewise.
++	(vst1_f64_x2): Likewise.
++	(vst1_s8_x2): Likewise.
++	(vst1_p8_x2): Likewise.
++	(vst1_s16_x2): Likewise.
++	(vst1_p16_x2): Likewise.
++	(vst1_s32_x2): Likewise.
++	(vst1_u8_x2): Likewise.
++	(vst1_u16_x2): Likewise.
++	(vst1_u32_x2): Likewise.
++	(vst1_f16_x2): Likewise.
++	(vst1_f32_x2): Likewise.
++	(vst1_p64_x2): Likewise.
++	(vst1q_s8_x2): Likewise.
++	(vst1q_p8_x2): Likewise.
++	(vst1q_s16_x2): Likewise.
++	(vst1q_p16_x2): Likewise.
++	(vst1q_s32_x2): Likewise.
++	(vst1q_s64_x2): Likewise.
++	(vst1q_u8_x2): Likewise.
++	(vst1q_u16_x2): Likewise.
++	(vst1q_u32_x2): Likewise.
++	(vst1q_u64_x2): Likewise.
++	(vst1q_f16_x2): Likewise.
++	(vst1q_f32_x2): Likewise.
++	(vst1q_f64_x2): Likewise.
++	(vst1q_p64_x2): Likewise.
++	(vst1_s64_x3): Likewise.
++	(vst1_u64_x3): Likewise.
++	(vst1_f64_x3): Likewise.
++	(vst1_s8_x3): Likewise.
++	(vst1_p8_x3): Likewise.
++	(vst1_s16_x3): Likewise.
++	(vst1_p16_x3): Likewise.
++	(vst1_s32_x3): Likewise.
++	(vst1_u8_x3): Likewise.
++	(vst1_u16_x3): Likewise.
++	(vst1_u32_x3): Likewise.
++	(vst1_f16_x3): Likewise.
++	(vst1_f32_x3): Likewise.
++	(vst1_p64_x3): Likewise.
++	(vst1q_s8_x3): Likewise.
++	(vst1q_p8_x3): Likewise.
++	(vst1q_s16_x3): Likewise.
++	(vst1q_p16_x3): Likewise.
++	(vst1q_s32_x3): Likewise.
++	(vst1q_s64_x3): Likewise.
++	(vst1q_u8_x3): Likewise.
++	(vst1q_u16_x3): Likewise.
++	(vst1q_u32_x3): Likewise.
++	(vst1q_u64_x3): Likewise.
++	(vst1q_f16_x3): Likewise.
++	(vst1q_f32_x3): Likewise.
++	(vst1q_f64_x3): Likewise.
++	(vst1q_p64_x3): Likewise.
++
 +2020-08-21  Richard Sandiford  <richard.sandiford@arm.com>
 +
 +	Backported from master:
@@ -10790,7 +10969,7 @@ index eb19c75bfa4..c6753fbfa6c 100644
      RS6000_BTI_V4SI, RS6000_BTI_V8HI, RS6000_BTI_V8HI, RS6000_BTI_V4SI },
    { ALTIVEC_BUILTIN_VEC_VMSUMUHM, ALTIVEC_BUILTIN_VMSUMUHM,
 diff --git a/gcc/config/rs6000/rs6000.c b/gcc/config/rs6000/rs6000.c
-index 8cf6bd54b2f..53490f796cd 100644
+index 8cf6bd54b2f..261e2aa808f 100644
 --- a/gcc/config/rs6000/rs6000.c
 +++ b/gcc/config/rs6000/rs6000.c
 @@ -4401,6 +4401,14 @@ rs6000_option_override_internal (bool global_init_p)
@@ -10808,6 +10987,24 @@ index 8cf6bd54b2f..53490f796cd 100644
    if (TARGET_DIRECT_MOVE && !TARGET_VSX)
      {
        if (rs6000_isa_flags_explicit & OPTION_MASK_DIRECT_MOVE)
+@@ -17267,7 +17275,7 @@ rs6000_init_builtins (void)
+   V2SF_type_node = build_vector_type (float_type_node, 2);
+   V2DI_type_node = rs6000_vector_type (TARGET_POWERPC64 ? "__vector long"
+ 				       : "__vector long long",
+-				       intDI_type_node, 2);
++				       long_long_integer_type_node, 2);
+   V2DF_type_node = rs6000_vector_type ("__vector double", double_type_node, 2);
+   V4SI_type_node = rs6000_vector_type ("__vector signed int",
+ 				       intSI_type_node, 4);
+@@ -17286,7 +17294,7 @@ rs6000_init_builtins (void)
+   unsigned_V2DI_type_node = rs6000_vector_type (TARGET_POWERPC64
+ 				       ? "__vector unsigned long"
+ 				       : "__vector unsigned long long",
+-				       unsigned_intDI_type_node, 2);
++				       long_long_unsigned_type_node, 2);
+ 
+   opaque_V2SF_type_node = build_opaque_vector_type (float_type_node, 2);
+   opaque_V2SI_type_node = build_opaque_vector_type (intSI_type_node, 2);
 @@ -17505,10 +17513,28 @@ rs6000_init_builtins (void)
    def_builtin ("__builtin_cpu_is", ftype, RS6000_BUILTIN_CPU_IS);
    def_builtin ("__builtin_cpu_supports", ftype, RS6000_BUILTIN_CPU_SUPPORTS);
@@ -13100,10 +13297,37 @@ index d9c66d42c26..0aa78a31411 100644
  extern void mark_end_of_function_resources (rtx, bool);
  extern void init_resource_info (rtx_insn *);
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index ab652ddc144..810caf53784 100644
+index ab652ddc144..1e3dbccdb25 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,487 @@
+@@ -1,3 +1,514 @@
++2020-09-16  Will Schmidt  <will_schmidt@vnet.ibm.com>
++
++	PR target/96139
++	* gcc.target/powerpc/pr96139-a.c: New test.
++	* gcc.target/powerpc/pr96139-b.c: New test.
++	* gcc.target/powerpc/pr96139-c.c: New test.
++
++2020-09-16  Sylvia Taylor  <sylvia.taylor@arm.com>
++
++	Backported from master:
++	2019-08-22  Sylvia Taylor  <sylvia.taylor@arm.com>
++
++	* gcc.target/aarch64/advsimd-intrinsics/vld1x4.c: New test.
++	* gcc.target/aarch64/advsimd-intrinsics/vst1x4.c: New test.
++
++2020-09-16  Sameera Deshpande  <sameera.deshpande@linaro.org>
++
++	Backported from master:
++	2018-05-31  Sameera Deshpande  <sameera.deshpande@linaro.org>
++
++	* gcc.target/aarch64/advsimd-intrinsics/vld1x3.c: New test for
++	vld1x3 intrinsics for aarch64.
++	* gcc.target/aarch64/advsimd-intrinsics/vst1x2.c: New test for
++	vst1x2 intrinsics for aarch64.
++	* gcc.target/aarch64/advsimd-intrinsics/vst1x3.c: New test for
++	vst1x3 intrinsics for aarch64.
++
 +2020-09-09  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
@@ -16593,6 +16817,114 @@ index b36ddfa26b0..b8888394393 100644
  // { dg-options "-O1 -mvsx" }
  
  int a, b;
+diff --git a/gcc/testsuite/gcc.target/powerpc/pr96139-a.c b/gcc/testsuite/gcc.target/powerpc/pr96139-a.c
+new file mode 100644
+index 00000000000..12a3383902c
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/powerpc/pr96139-a.c
+@@ -0,0 +1,32 @@
++/* { dg-do compile } */
++/* { dg-options "-O2 -Wall -m32 -mvsx" } */
++/* { dg-require-effective-target ilp32 } */
++/* { dg-require-effective-target powerpc_vsx_ok } */
++
++#include <stdio.h>
++#include <altivec.h>
++
++void
++try_printing_longlong_a (
++                        __vector signed char cval,
++                        __vector signed int ival,
++                        __vector signed long long int llval,
++                        int x, int y, int z)
++{
++  printf (" %016llx \n", llval[x]);
++  printf (" %016x \n", ival[z]);
++  printf (" %c \n", cval[y]);
++}
++
++void
++try_printing_unsigned_longlong_a (
++                        __vector unsigned char cval,
++                        __vector unsigned int ival,
++                        __vector unsigned long long int llval,
++                        int x, int y, int z)
++{
++  printf (" %016llx \n", llval[x]);
++  printf (" %016x \n", ival[z]);
++  printf (" %c \n", cval[y]);
++}
++
+diff --git a/gcc/testsuite/gcc.target/powerpc/pr96139-b.c b/gcc/testsuite/gcc.target/powerpc/pr96139-b.c
+new file mode 100644
+index 00000000000..379849a591a
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/powerpc/pr96139-b.c
+@@ -0,0 +1,32 @@
++/* { dg-do compile } */
++/* { dg-options "-O2 -Wall -m64 -mvsx" } */
++/* { dg-require-effective-target lp64 } */
++/* { dg-require-effective-target powerpc_vsx_ok } */
++
++#include <stdio.h>
++#include <altivec.h>
++
++void
++try_printing_longlong_a (
++                        __vector signed char cval,
++                        __vector signed int ival,
++                        __vector signed long long int llval,
++                        int x, int y, int z)
++{
++  printf (" %016llx \n", llval[x]);
++  printf (" %016x \n", ival[z]);
++  printf (" %c \n", cval[y]);
++}
++
++
++void
++try_printing_unsigned_longlong_a (
++                        __vector unsigned char cval,
++                        __vector unsigned int ival,
++                        __vector unsigned long long int llval,
++                        int x, int y, int z)
++{
++  printf (" %016llx \n", llval[x]);
++  printf (" %016x \n", ival[z]);
++  printf (" %c \n", cval[y]);
++}
+diff --git a/gcc/testsuite/gcc.target/powerpc/pr96139-c.c b/gcc/testsuite/gcc.target/powerpc/pr96139-c.c
+new file mode 100644
+index 00000000000..3ada2603428
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/powerpc/pr96139-c.c
+@@ -0,0 +1,26 @@
++/* { dg-do run } */
++/* { dg-options "-O2 -Wall -maltivec" } */
++/* { dg-require-effective-target powerpc_altivec_ok } */
++
++/*
++ * Based on test created by sjmunroe for pr96139
++ */
++
++#include <stdio.h>
++#include <altivec.h>
++
++volatile vector long long llfoo;
++
++void
++print_v2xint64_b () {
++  printf (" %016llx \n", llfoo[0]);
++  printf (" %016llx \n", llfoo[1]);
++}
++
++int 
++main() {
++llfoo[0]=12345678;
++llfoo[1]=34567890;
++print_v2xint64_b();
++return 0;
++}
 diff --git a/gcc/testsuite/gcc.target/powerpc/pragma_misc9.c b/gcc/testsuite/gcc.target/powerpc/pragma_misc9.c
 new file mode 100644
 index 00000000000..605c61a0d94
