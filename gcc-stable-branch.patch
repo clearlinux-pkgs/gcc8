@@ -61,7 +61,10 @@ Fritz Reese (2):
       Backport form master: Fix fortran/85982 ICE in resolve_component.
       Indicate backport in changelogs from last commit.
 
-GCC Administrator (197):
+GCC Administrator (200):
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -274,13 +277,14 @@ H.J. Lu (9):
 Haijian Zhang (1):
       pr94780.c fails with ICE on aarch64 [PR94820]
 
-Harald Anlauf (6):
+Harald Anlauf (7):
       PR fortran/95689 - ICE in check_sym_interfaces, at fortran/interface.c:2015
       Revert "PR fortran/95689 - ICE in check_sym_interfaces, at fortran/interface.c:2015"
       PR fortran/71706 - ICE on using sync images with -fcheck=bounds
       PR fortran/88379 - ICE with allocatable coarray, class and associate
       PR fortran/89574 - ICE in conv_function_val, at fortran/trans-expr.c:3792
       PR fortran/96890 - Wrong answer with intrinsic IALL
+      PR fortran/93423 - ICE on invalid with argument list for module procedure
 
 Iain Sandoe (1):
       Darwin: Fix i686 bootstrap when the assembler supports GOTOFF in data.
@@ -483,8 +487,9 @@ Thomas Schwinge (2):
       'libgomp.oacc-fortran/{error_,}stop-{1,2,3}.f': initialize before the checkpoint
       [HSA] Avoid ICE when "HSA does not implement indirect calls"
 
-Tobias Burnus (1):
+Tobias Burnus (2):
       [Fortran] Disable front-end optimization for OpenACC atomic (PR93462)
+      Fortran: Avoid double-free with parse error (PR96041, PR93423)
 
 Uros Bizjak (4):
       i386: Require OPTION_MASK_ISA_SSE2 for __builtin_ia32_movq128 [PR94603]
@@ -5310,10 +5315,37 @@ index a2f28f43be3..6da4de57dc6 100644
 -8.4.0
 +8.4.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 142499c563c..9d11b8a47e6 100644
+index 142499c563c..960c3852933 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,1482 @@
+@@ -1,3 +1,1509 @@
++2020-09-18  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2020-09-16  Jakub Jelinek  <jakub@redhat.com>
++
++	PR tree-optimization/97053
++	* gimple-ssa-store-merging.c (check_no_overlap): Add FIRST_ORDER,
++	START, FIRST_EARLIER and LAST_EARLIER arguments.  Return false if
++	any stores between FIRST_EARLIER inclusive and LAST_EARLIER exclusive
++	has order in between FIRST_ORDER and LAST_ORDER and overlaps the to
++	be merged store.
++	(imm_store_chain_info::try_coalesce_bswap): Add FIRST_EARLIER argument.
++	Adjust check_no_overlap caller.
++	(imm_store_chain_info::coalesce_immediate_stores): Add first_earlier
++	and last_earlier variables, adjust them during iterations.  Adjust
++	check_no_overlap callers, call check_no_overlap even when extending
++	overlapping stores by extra INTEGER_CST stores.
++
++2020-09-18  Richard Sandiford  <richard.sandiford@arm.com>
++
++	Backported from master:
++	2020-04-29  Richard Sandiford  <richard.sandiford@arm.com>
++
++	* config/arm/arm-builtins.c (arm_atomic_assign_expand_fenv): Use
++	TARGET_EXPR instead of MODIFY_EXPR for the first assignments to
++	fenv_var and new_fenv_var.
++
 +2020-04-29  Richard Sandiford  <richard.sandiford@arm.com>
 +
 +	* config/arm/arm-builtins.c (arm_atomic_assign_expand_fenv): Use
@@ -16022,10 +16054,28 @@ index 9183c3752ce..85b85398933 100644
  				    "when distributing negation across "
  				    "division"),
 diff --git a/gcc/fortran/ChangeLog b/gcc/fortran/ChangeLog
-index d3be7538ff7..3dac343f4d8 100644
+index d3be7538ff7..27d7dce2710 100644
 --- a/gcc/fortran/ChangeLog
 +++ b/gcc/fortran/ChangeLog
-@@ -1,3 +1,178 @@
+@@ -1,3 +1,196 @@
++2020-09-19  Tobias Burnus  <tobias@codesourcery.com>
++
++	Backported from master:
++	2020-09-17  Tobias Burnus  <tobias@codesourcery.com>
++
++	PR fortran/96041
++	PR fortran/93423
++	* decl.c (gfc_match_submod_proc): Avoid later double-free
++	in the error case.
++
++2020-09-19  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2020-07-02  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/93423
++	* resolve.c (resolve_symbol): Avoid NULL pointer dereference.
++
 +2020-07-23  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
@@ -16253,7 +16303,7 @@ index 23a0468dedd..8d7ea836800 100644
  
  
 diff --git a/gcc/fortran/decl.c b/gcc/fortran/decl.c
-index 13dd7352d27..3d04e65015d 100644
+index 13dd7352d27..6249562de29 100644
 --- a/gcc/fortran/decl.c
 +++ b/gcc/fortran/decl.c
 @@ -3928,7 +3928,7 @@ gfc_match_decl_type_spec (gfc_typespec *ts, int implicit_flag)
@@ -16329,6 +16379,22 @@ index 13dd7352d27..3d04e65015d 100644
  	      m = MATCH_ERROR;
  	      goto cleanup;
  	    }
+@@ -9448,6 +9460,15 @@ gfc_match_submod_proc (void)
+ 
+   if (gfc_match_eos () != MATCH_YES)
+     {
++      /* Unset st->n.sym. Note: in reject_statement (), the symbol changes are
++	 undone, such that the st->n.sym->formal points to the original symbol;
++	 if now this namespace is finalized, the formal namespace is freed,
++	 but it might be still needed in the parent namespace.  */
++      gfc_symtree *st = gfc_find_symtree (gfc_current_ns->sym_root, sym->name);
++      st->n.sym = NULL;
++      gfc_free_symbol (sym->tlink);
++      sym->tlink = NULL;
++      sym->refs--;
+       gfc_syntax_error (ST_MODULE_PROC);
+       return MATCH_ERROR;
+     }
 diff --git a/gcc/fortran/frontend-passes.c b/gcc/fortran/frontend-passes.c
 index be0fd0f7e6c..e317c89ba5d 100644
 --- a/gcc/fortran/frontend-passes.c
@@ -16433,7 +16499,7 @@ index d0a4b53da6b..9b61f1f52ec 100644
        /* If a comma appears, it is an intrinsic subprogram. */
        gfc_gobble_whitespace ();
 diff --git a/gcc/fortran/resolve.c b/gcc/fortran/resolve.c
-index 8afc72350c1..462d07351ad 100644
+index 8afc72350c1..be63ce50bf2 100644
 --- a/gcc/fortran/resolve.c
 +++ b/gcc/fortran/resolve.c
 @@ -1746,9 +1746,11 @@ gfc_resolve_intrinsic (gfc_symbol *sym, locus *loc)
@@ -16491,6 +16557,15 @@ index 8afc72350c1..462d07351ad 100644
  
    /* No symbol will ever have union type; only components can be unions.
       Union type declaration symbols have type BT_UNKNOWN but flavor FL_UNION
+@@ -15344,7 +15348,7 @@ resolve_symbol (gfc_symbol *sym)
+       if (formal)
+ 	{
+ 	  sym->formal_ns = formal->sym->ns;
+-          if (sym->ns != formal->sym->ns)
++	  if (sym->formal_ns && sym->ns != formal->sym->ns)
+ 	    sym->formal_ns->refs++;
+ 	}
+     }
 @@ -16311,7 +16315,8 @@ resolve_equivalence (gfc_equiv *eq)
  	  && !gfc_notify_std (GFC_STD_GNU, msg, sym->name, &e->where))
  		continue;
@@ -17453,10 +17528,27 @@ index d06e88a8135..25377232248 100644
  
    if (warn_packed && TREE_CODE (rli->t) == RECORD_TYPE
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index ab652ddc144..406351bee17 100644
+index ab652ddc144..eb5bb3cf008 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,892 @@
+@@ -1,3 +1,909 @@
++2020-09-19  Harald Anlauf  <anlauf@gmx.de>
++
++	Backported from master:
++	2020-07-02  Harald Anlauf  <anlauf@gmx.de>
++
++	PR fortran/93423
++	* gfortran.dg/pr93423.f90: New file.
++
++2020-09-18  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2020-09-16  Jakub Jelinek  <jakub@redhat.com>
++
++	PR tree-optimization/97053
++	* gcc.dg/store_merging_31.c: New test.
++	* gcc.dg/store_merging_32.c: New test.
++
 +2020-09-17  Jakub Jelinek  <jakub@redhat.com>
 +
 +	Backported from master:
@@ -24894,6 +24986,33 @@ index 00000000000..7d5477ac0c3
 +! { dg-options "-std=legacy -Ofast --param max-cse-insns=0 -fno-schedule-insns -fsanitize=null" }
 +
 +include 'string_ctor_1.f90'
+diff --git a/gcc/testsuite/gfortran.dg/pr93423.f90 b/gcc/testsuite/gfortran.dg/pr93423.f90
+new file mode 100644
+index 00000000000..fed5914daba
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/pr93423.f90
+@@ -0,0 +1,21 @@
++! { dg-do compile }
++! PR fortran/93423 - ICE on invalid with argument list for module procedure
++
++module t
++  type :: b
++   contains
++     procedure :: p => bp
++  end type b
++  interface
++     module function bp(s)
++       class(b), intent(inout) :: s
++       integer, pointer :: bp
++     end function
++  end interface
++end module t
++
++submodule (t) ts
++contains
++  module procedure bp(s) ! { dg-error "must be in a generic module interface" }
++  end procedure bp       ! { dg-error "Expecting END SUBMODULE statement" }
++end submodule ts
 diff --git a/gcc/testsuite/gfortran.dg/pr93484_1.f90 b/gcc/testsuite/gfortran.dg/pr93484_1.f90
 new file mode 100644
 index 00000000000..3b6dbc9ad79
