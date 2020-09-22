@@ -61,7 +61,8 @@ Fritz Reese (2):
       Backport form master: Fix fortran/85982 ICE in resolve_component.
       Indicate backport in changelogs from last commit.
 
-GCC Administrator (200):
+GCC Administrator (201):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -370,7 +371,7 @@ Jason Merrill (8):
 John David Anglin (1):
       Define __BIG_ENDIAN__
 
-Jonathan Wakely (16):
+Jonathan Wakely (17):
       doc: Note that some warnings depend on optimizations (PR 92757)
       libstdc++: Fix std::to_address for debug iterators (PR 93960)
       libstdc++: Document correct feature test macro, __cpp_lib_is_invocable
@@ -387,6 +388,7 @@ Jonathan Wakely (16):
       libstdc++: Remove unused Makefile.in
       libstdc++: Enable assertions in constexpr string_view members [PR 71960]
       libstdc++: Fix is_trivially_constructible (PR 94033)
+      libstdc++: Use correct argument type for __use_alloc [PR 96803]
 
 Kewen Lin (1):
       testsuite: Add -fno-common to pr82374.c [PR94077]
@@ -496,6 +498,9 @@ Uros Bizjak (4):
       i386: Remove unneeded assignments when triggering SSE exceptions
       alpha: Implement the PR94780 fix for alpha.
       i386: Fix restore_stack_nonlocal expander [PR96536].
+
+Vlad Lazar (1):
+      [AArch64] Implement new intrinsics vabsd_s64 and vnegd_s64.
 
 Will Schmidt (5):
       rs6000 pragma fix backport from mainline to gcc-8
@@ -8718,10 +8723,29 @@ index 52eaf8c6f40..b4970b73607 100644
 +Target Report Mask(OUTLINE_ATOMICS) Save
 +Generate local calls to out-of-line atomic operations.
 diff --git a/gcc/config/aarch64/arm_neon.h b/gcc/config/aarch64/arm_neon.h
-index 115cedcaa5b..dd53e243b52 100644
+index 115cedcaa5b..7bcd1e1c844 100644
 --- a/gcc/config/aarch64/arm_neon.h
 +++ b/gcc/config/aarch64/arm_neon.h
-@@ -17145,6 +17145,374 @@ vld1_u64 (const uint64_t *a)
+@@ -11822,6 +11822,18 @@ vabsq_s64 (int64x2_t __a)
+   return __builtin_aarch64_absv2di (__a);
+ }
+ 
++/* Try to avoid moving between integer and vector registers.
++   For why the cast to unsigned is needed check the vnegd_s64 intrinsic.
++   There is a testcase related to this issue:
++   gcc.target/aarch64/vabsd_s64.c.  */
++
++__extension__ extern __inline int64_t
++__attribute__ ((__always_inline__, __gnu_inline__, __artificial__))
++vabsd_s64 (int64_t __a)
++{
++  return __a < 0 ? - (uint64_t) __a : __a;
++}
++
+ /* vadd */
+ 
+ __extension__ extern __inline int64_t
+@@ -17145,6 +17157,374 @@ vld1_u64 (const uint64_t *a)
    return (uint64x1_t) {*a};
  }
  
@@ -9096,7 +9120,7 @@ index 115cedcaa5b..dd53e243b52 100644
  /* vld1q */
  
  __extension__ extern __inline float16x8_t
-@@ -17588,151 +17956,433 @@ vld1q_u64 (const uint64_t *a)
+@@ -17588,141 +17968,423 @@ vld1q_u64 (const uint64_t *a)
      __builtin_aarch64_ld1v2di ((const __builtin_aarch64_simd_di *) a);
  }
  
@@ -9350,22 +9374,18 @@ index 115cedcaa5b..dd53e243b52 100644
 +  __au.__o
 +    = __builtin_aarch64_ld1x4v4hi ((const __builtin_aarch64_simd_hi *) __a);
 +  return __au.__i;
- }
- 
--__extension__ extern __inline poly64x2_t
++}
++
 +__extension__ extern __inline poly16x8x4_t
- __attribute__ ((__always_inline__, __gnu_inline__, __artificial__))
--vld1q_dup_p64 (const poly64_t* __a)
++__attribute__ ((__always_inline__, __gnu_inline__, __artificial__))
 +vld1q_p16_x4 (const poly16_t *__a)
- {
--  return vdupq_n_p64 (*__a);
++{
 +  union { poly16x8x4_t __i; __builtin_aarch64_simd_xi __o; } __au;
 +  __au.__o
 +    = __builtin_aarch64_ld1x4v8hi ((const __builtin_aarch64_simd_hi *) __a);
 +  return __au.__i;
- }
- 
-- __extension__ extern __inline int8x16_t
++}
++
 +__extension__ extern __inline int64x1x4_t
 +__attribute__ ((__always_inline__, __gnu_inline__, __artificial__))
 +vld1_s64_x4 (const int64_t *__a)
@@ -9581,20 +9601,36 @@ index 115cedcaa5b..dd53e243b52 100644
 +vld1q_dup_p16 (const poly16_t* __a)
 +{
 +  return vdupq_n_p16 (*__a);
-+}
+ }
+ 
+ __extension__ extern __inline poly64x2_t
+@@ -22539,6 +23201,25 @@ vneg_s64 (int64x1_t __a)
+   return -__a;
+ }
+ 
++/* According to the ACLE, the negative of the minimum (signed)
++   value is itself.  This leads to a semantics mismatch, as this is
++   undefined behaviour in C.  The value range predictor is not
++   aware that the negation of a negative number can still be negative
++   and it may try to fold the expression.  See the test in
++   gcc.target/aarch64/vnegd_s64.c for an example.
 +
-+__extension__ extern __inline poly64x2_t
++   The cast below tricks the value range predictor to include
++   INT64_MIN in the range it computes.  So for x in the range
++   [INT64_MIN, y] the range prediction after vnegd_s64 (x) will
++   be ~[INT64_MIN + 1, y].  */
++
++__extension__ extern __inline int64_t
 +__attribute__ ((__always_inline__, __gnu_inline__, __artificial__))
-+vld1q_dup_p64 (const poly64_t* __a)
++vnegd_s64 (int64_t __a)
 +{
-+  return vdupq_n_p64 (*__a);
++  return - (uint64_t) __a;
 +}
 +
-+ __extension__ extern __inline int8x16_t
+ __extension__ extern __inline float32x4_t
  __attribute__ ((__always_inline__, __gnu_inline__, __artificial__))
- vld1q_dup_s8 (const int8_t* __a)
- {
-@@ -27497,6 +28147,932 @@ vst1q_lane_u64 (uint64_t *__a, uint64x2_t __b, const int __lane)
+ vnegq_f32 (float32x4_t __a)
+@@ -27497,6 +28178,932 @@ vst1q_lane_u64 (uint64_t *__a, uint64x2_t __b, const int __lane)
    *__a = __aarch64_vget_lane_any (__b, __lane);
  }
  
@@ -22380,6 +22416,25 @@ index 00000000000..fa2dddfac15
 +    __builtin_abort ();
 +  return 0;
 +}
+diff --git a/gcc/testsuite/gcc.target/aarch64/scalar_intrinsics.c b/gcc/testsuite/gcc.target/aarch64/scalar_intrinsics.c
+index ea29066e369..d943989768d 100644
+--- a/gcc/testsuite/gcc.target/aarch64/scalar_intrinsics.c
++++ b/gcc/testsuite/gcc.target/aarch64/scalar_intrinsics.c
+@@ -627,6 +627,14 @@ test_vqabss_s32 (int32_t a)
+   return vqabss_s32 (a);
+ }
+ 
++/* { dg-final { scan-assembler-times "\\tneg\\tx\[0-9\]+" 1 } } */
++
++int64_t
++test_vnegd_s64 (int64_t a)
++{
++  return vnegd_s64 (a);
++}
++
+ /* { dg-final { scan-assembler-times "\\tsqneg\\tb\[0-9\]+" 1 } } */
+ 
+ int8_t
 diff --git a/gcc/testsuite/gcc.target/aarch64/sync-comp-swap.c b/gcc/testsuite/gcc.target/aarch64/sync-comp-swap.c
 index e571b2f13b3..f56415f3354 100644
 --- a/gcc/testsuite/gcc.target/aarch64/sync-comp-swap.c
@@ -22479,6 +22534,192 @@ index 00000000000..acace4c8f2a
 +}
 +
 +/* { dg-final { scan-assembler-times "bl.*__aarch64_cas2_acq_rel" 1 } } */
+diff --git a/gcc/testsuite/gcc.target/aarch64/vabs_intrinsic_3.c b/gcc/testsuite/gcc.target/aarch64/vabs_intrinsic_3.c
+new file mode 100644
+index 00000000000..cf4e7ae4679
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/aarch64/vabs_intrinsic_3.c
+@@ -0,0 +1,39 @@
++/* Test the vabsd_s64 intrinsic.  */
++
++/* { dg-do run } */
++/* { dg-options "--save-temps -O2" } */
++
++#include <arm_neon.h>
++#include <limits.h>
++
++extern void abort (void);
++
++#define force_simd(V1)   asm volatile ("mov %d0, %1.d[0]"       \
++           : "=w"(V1)                                           \
++           : "w"(V1)                                            \
++           : /* No clobbers */);
++
++#define RUN_TEST(test, answ)   \
++{                                      \
++  force_simd (test);                   \
++  force_simd (answ);                   \
++  int64_t res = vabsd_s64 (test);      \
++  force_simd (res);                    \
++  if (res != answ)                     \
++    abort ();                          \
++}
++
++int64_t input[] = {INT64_MAX, 10, 0, -10, INT64_MIN + 1, INT64_MIN};
++int64_t expected[] = {INT64_MAX, 10, 0, 10, INT64_MAX, INT64_MIN};
++
++int main (void)
++{
++  RUN_TEST (input[0], expected[0]);
++  RUN_TEST (input[1], expected[1]);
++  RUN_TEST (input[2], expected[2]);
++  RUN_TEST (input[3], expected[3]);
++  RUN_TEST (input[4], expected[4]);
++  RUN_TEST (input[5], expected[5]);
++
++  return 0;
++}
+diff --git a/gcc/testsuite/gcc.target/aarch64/vabsd_s64.c b/gcc/testsuite/gcc.target/aarch64/vabsd_s64.c
+new file mode 100644
+index 00000000000..a0f88ee12c3
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/aarch64/vabsd_s64.c
+@@ -0,0 +1,34 @@
++/* Check that the compiler does not optimise the vabsd_s64 call out.
++   We need to check for this because there is a mismatch in semantics
++   between the ACLE, which states that he absolute value of the minimum
++   (signed) value is itself, and C, where this is undefined behaviour.  */
++
++/* { dg-do run } */
++/* { dg-options "--save-temps -fno-inline -O2" } */
++
++#include <arm_neon.h>
++#include <limits.h>
++
++extern void abort (void);
++
++int
++bar (int64_t x)
++{
++  if (x < (int64_t) 0)
++    return vabsd_s64 (x) < (int64_t) 0;
++  else
++	return -1;
++}
++
++int
++main (void)
++{
++  int ans = 1;
++  int res_abs = bar (INT64_MIN);
++
++  if (res_abs != ans)
++    abort ();
++
++  return 0;
++}
++
+diff --git a/gcc/testsuite/gcc.target/aarch64/vneg_s.c b/gcc/testsuite/gcc.target/aarch64/vneg_s.c
+index 911054053ea..e7f20f2831f 100644
+--- a/gcc/testsuite/gcc.target/aarch64/vneg_s.c
++++ b/gcc/testsuite/gcc.target/aarch64/vneg_s.c
+@@ -75,6 +75,18 @@ extern void abort (void);
+       }									\
+   }
+ 
++#define RUN_TEST_SCALAR(test_val, answ_val, a, b)     \
++  {                                                   \
++    int64_t res;                                      \
++    INHIB_OPTIMIZATION;                               \
++    a = test_val;                                     \
++    b = answ_val;                                     \
++    force_simd (b);                                   \
++    force_simd (a);                                   \
++    res = vnegd_s64 (a);                              \
++    force_simd (res);                                 \
++  }
++
+ int
+ test_vneg_s8 ()
+ {
+@@ -177,7 +189,24 @@ test_vneg_s64 ()
+   return 0;
+ }
+ 
+-/* { dg-final { scan-assembler-times "neg\\td\[0-9\]+, d\[0-9\]+" 8 } } */
++int
++test_vnegd_s64 ()
++{
++  int64_t a, b;
++
++  RUN_TEST_SCALAR (TEST0, ANSW0, a, b);
++  RUN_TEST_SCALAR (TEST1, ANSW1, a, b);
++  RUN_TEST_SCALAR (TEST2, ANSW2, a, b);
++  RUN_TEST_SCALAR (TEST3, ANSW3, a, b);
++  RUN_TEST_SCALAR (TEST4, ANSW4, a, b);
++  RUN_TEST_SCALAR (TEST5, ANSW5, a, b);
++  RUN_TEST_SCALAR (LLONG_MAX, LLONG_MIN + 1, a, b);
++  RUN_TEST_SCALAR (LLONG_MIN, LLONG_MIN, a, b);
++
++  return 0;
++}
++
++/* { dg-final { scan-assembler-times "neg\\td\[0-9\]+, d\[0-9\]+" 16 } } */
+ 
+ int
+ test_vnegq_s8 ()
+@@ -283,6 +312,9 @@ main (int argc, char **argv)
+   if (test_vneg_s64 ())
+     abort ();
+ 
++  if (test_vnegd_s64 ())
++    abort ();
++
+   if (test_vnegq_s8 ())
+     abort ();
+ 
+diff --git a/gcc/testsuite/gcc.target/aarch64/vnegd_s64.c b/gcc/testsuite/gcc.target/aarch64/vnegd_s64.c
+new file mode 100644
+index 00000000000..73d478ff49d
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/aarch64/vnegd_s64.c
+@@ -0,0 +1,36 @@
++/* Check that the compiler does not optimise the negation out.
++   We need to check for this because there is a mismatch in semantics
++   between the ACLE, which states that he negative of the minimum
++   (signed) value is itself and C, where this is undefined behaviour.  */
++
++/* { dg-do run } */
++/* { dg-options "--save-temps -O2" } */
++
++#include <arm_neon.h>
++#include <limits.h>
++
++extern void abort (void);
++
++int
++foo (int64_t x)
++{
++  if (x < (int64_t) 0)
++    return vnegd_s64 (x) < (int64_t) 0;
++  else
++    return -1;
++}
++
++/* { dg-final { scan-assembler-times {neg\tx[0-9]+, x[0-9]+} 1 } } */
++
++int
++main (void)
++{
++  int ans = 1;
++  int res = foo (INT64_MIN);
++
++  if (res != ans)
++    abort ();
++
++  return 0;
++}
++
 diff --git a/gcc/testsuite/gcc.target/i386/avx2-pr94460.c b/gcc/testsuite/gcc.target/i386/avx2-pr94460.c
 new file mode 100644
 index 00000000000..75b7a7bf313
@@ -28811,6 +29052,38 @@ index 96962e39bf4..412cc17de24 100644
  	return *(this->_M_str + this->_M_len - 1);
        }
  
+diff --git a/libstdc++-v3/include/std/tuple b/libstdc++-v3/include/std/tuple
+index 1d0074129b1..f2d553f7035 100644
+--- a/libstdc++-v3/include/std/tuple
++++ b/libstdc++-v3/include/std/tuple
+@@ -271,13 +271,13 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+ 	  _Base(__use_alloc<_Head, _Alloc, _Head>(__a),
+ 	        std::forward<_Head>(_M_head(__in))) { }
+ 
+-      template<typename _Alloc, typename... _UElements>
++      template<typename _Alloc, typename _UHead, typename... _UTails>
+ 	_Tuple_impl(allocator_arg_t __tag, const _Alloc& __a,
+-	            const _Tuple_impl<_Idx, _UElements...>& __in)
++		    const _Tuple_impl<_Idx, _UHead, _UTails...>& __in)
+ 	: _Inherited(__tag, __a,
+-		     _Tuple_impl<_Idx, _UElements...>::_M_tail(__in)),
+-	  _Base(__use_alloc<_Head, _Alloc, _Head>(__a),
+-		_Tuple_impl<_Idx, _UElements...>::_M_head(__in)) { }
++		     _Tuple_impl<_Idx, _UHead, _UTails...>::_M_tail(__in)),
++	  _Base(__use_alloc<_Head, _Alloc, const _UHead&>(__a),
++		_Tuple_impl<_Idx, _UHead, _UTails...>::_M_head(__in)) { }
+ 
+       template<typename _Alloc, typename _UHead, typename... _UTails>
+ 	_Tuple_impl(allocator_arg_t __tag, const _Alloc& __a,
+@@ -410,7 +410,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+       template<typename _Alloc, typename _UHead>
+ 	_Tuple_impl(allocator_arg_t __tag, const _Alloc& __a,
+ 	            const _Tuple_impl<_Idx, _UHead>& __in)
+-	: _Base(__use_alloc<_Head, _Alloc, _Head>(__a),
++	: _Base(__use_alloc<_Head, _Alloc, const _UHead&>(__a),
+ 		_Tuple_impl<_Idx, _UHead>::_M_head(__in)) { }
+ 
+       template<typename _Alloc, typename _UHead>
 diff --git a/libstdc++-v3/include/std/type_traits b/libstdc++-v3/include/std/type_traits
 index e0394179963..6c32dd4a51f 100644
 --- a/libstdc++-v3/include/std/type_traits
@@ -29856,6 +30129,74 @@ index 00000000000..4555284416d
 +main()
 +{
 +  test01();
++}
+diff --git a/libstdc++-v3/testsuite/20_util/tuple/cons/96803.cc b/libstdc++-v3/testsuite/20_util/tuple/cons/96803.cc
+new file mode 100644
+index 00000000000..867a42150e0
+--- /dev/null
++++ b/libstdc++-v3/testsuite/20_util/tuple/cons/96803.cc
+@@ -0,0 +1,62 @@
++// Copyright (C) 2020 Free Software Foundation, Inc.
++//
++// This file is part of the GNU ISO C++ Library.  This library is free
++// software; you can redistribute it and/or modify it under the
++// terms of the GNU General Public License as published by the
++// Free Software Foundation; either version 3, or (at your option)
++// any later version.
++
++// This library is distributed in the hope that it will be useful,
++// but WITHOUT ANY WARRANTY; without even the implied warranty of
++// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++// GNU General Public License for more details.
++
++// You should have received a copy of the GNU General Public License along
++// with this library; see the file COPYING3.  If not see
++// <http://www.gnu.org/licenses/>.
++
++// { dg-do compile { target c++11 } }
++
++#include <tuple>
++#include <memory>
++
++struct X
++{
++  using allocator_type = std::allocator<int>;
++
++  X(X&&) { }
++  X(std::allocator_arg_t, const allocator_type&, X&&) { }
++
++  explicit X(int) { }
++  explicit X(int, allocator_type) { }
++};
++
++void
++test01()
++{
++  // PR libstdc++/96803
++  // std::tuple chooses wrong constructor for uses-allocator construction
++  std::tuple<int> o;
++  std::tuple<X> nok(std::allocator_arg, std::allocator<int>(), o);
++
++  std::tuple<int, int> oo;
++  std::tuple<X, X> nn(std::allocator_arg, std::allocator<int>(), oo);
++}
++
++struct Y
++{
++  using allocator_type = std::allocator<int>;
++
++  Y(const X&) { }
++  Y(const X&, const allocator_type&) { }
++
++  Y(X&&) { }
++  Y(std::allocator_arg_t, const allocator_type&, X&&) { }
++};
++
++void
++test02()
++{
++  std::tuple<X, X> o{1, 1};
++  std::tuple<Y, Y> oo(std::allocator_arg, std::allocator<int>(), o);
 +}
 diff --git a/libstdc++-v3/testsuite/27_io/filesystem/operations/last_write_time.cc b/libstdc++-v3/testsuite/27_io/filesystem/operations/last_write_time.cc
 index 1fdf39c7e0d..cedddd1606f 100644
