@@ -62,7 +62,8 @@ Fritz Reese (2):
       Backport form master: Fix fortran/85982 ICE in resolve_component.
       Indicate backport in changelogs from last commit.
 
-GCC Administrator (203):
+GCC Administrator (204):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -267,7 +268,7 @@ GCC Administrator (203):
       Daily bump.
       Daily bump.
 
-H.J. Lu (9):
+H.J. Lu (10):
       i386: Properly pop restore token in signal frame
       lto: Also copy .note.gnu.property section
       x86: Insert ENDBR if function will be called indirectly
@@ -277,6 +278,7 @@ H.J. Lu (9):
       x86: Handle -mavx512vpopcntdq for -march=native
       x86: Update Intel processor detection
       x96: Remove PTA_CLWB from PTA_ICELAKE_CLIENT
+      rtl_data: Add sp_is_clobbered_by_asm
 
 Haijian Zhang (1):
       pr94780.c fails with ICE on aarch64 [PR94820]
@@ -396,9 +398,11 @@ Jonathan Wakely (17):
 Kewen Lin (1):
       testsuite: Add -fno-common to pr82374.c [PR94077]
 
-Kyrylo Tkachov (2):
+Kyrylo Tkachov (4):
       [AArch64] Use __getauxval instead of getauxval in LSE detection code in libgcc
       aarch64: Add initial support for -mcpu=zeus
+      Add support for __jcvt intrinsic
+      AArch64: Implement __rndr, __rndrrs intrinsics
 
 Marek Polacek (1):
       c++: Bogus error with alignof [PR90736]
@@ -5325,10 +5329,88 @@ index a2f28f43be3..6da4de57dc6 100644
 -8.4.0
 +8.4.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 142499c563c..5697b44a10e 100644
+index 142499c563c..e596b0d7780 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,1518 @@
+@@ -1,3 +1,1596 @@
++2020-09-24  H.J. Lu  <hjl.tools@gmail.com>
++
++	Backported from master:
++	2020-09-16  H.J. Lu  <hjl.tools@gmail.com>
++
++	PR target/97032
++	* cfgexpand.c (expand_asm_stmt): Set sp_is_clobbered_by_asm to
++	true if the stack pointer is clobbered by asm statement.
++	* emit-rtl.h (rtl_data): Add sp_is_clobbered_by_asm.
++	* config/i386/i386.c (ix86_get_drap_rtx): Set need_drap to true
++	if the stack pointer is clobbered by asm statement.
++
++2020-09-24  Kyrylo Tkachov  <kyrylo.tkachov@arm.com>
++
++	Backported from master:
++	2020-09-24  Kyrylo Tkachov  <kyrylo.tkachov@arm.com>
++		    Andrea Corallo   <andrea.corallo@arm.com>
++
++	PR target/71233
++	* config/aarch64/aarch64.md (UNSPEC_FJCVTZS): Define.
++	(aarch64_fjcvtzs): New define_insn.
++	* config/aarch64/aarch64.h (TARGET_JSCVT): Define.
++	* config/aarch64/aarch64-builtins.c (aarch64_builtins):
++	Add AARCH64_JSCVT.
++	(aarch64_init_builtins): Initialize __builtin_aarch64_jcvtzs.
++	(aarch64_expand_builtin): Handle AARCH64_JSCVT.
++	* config/aarch64/aarch64-c.c (aarch64_update_cpp_builtins): Define
++	__ARM_FEATURE_JCVT where appropriate.
++	* config/aarch64/arm_acle.h (__jcvt): Define.
++	* doc/sourcebuild.texi (aarch64_fjcvtzs_hw) Document new
++	target supports option.
++
++2020-09-24  Tamar Christina  <tamar.christina@arm.com>
++
++	Backported from master:
++	2019-02-25  Tamar Christina  <tamar.christina@arm.com>
++
++	PR target/71233
++	* config/aarch64/arm_neon.h (vfmlal_low_u32, vfmlsl_low_u32,
++	vfmlalq_low_u32, vfmlslq_low_u32, vfmlal_high_u32, vfmlsl_high_u32,
++	vfmlalq_high_u32, vfmlslq_high_u32, vfmlal_lane_low_u32,
++	vfmlsl_lane_low_u32, vfmlal_laneq_low_u32, vfmlsl_laneq_low_u32,
++	vfmlalq_lane_low_u32, vfmlslq_lane_low_u32, vfmlalq_laneq_low_u32,
++	vfmlslq_laneq_low_u32, vfmlal_lane_high_u32, vfmlsl_lane_high_u32,
++	vfmlal_laneq_high_u32, vfmlsl_laneq_high_u32, vfmlalq_lane_high_u32,
++	vfmlslq_lane_high_u32, vfmlalq_laneq_high_u32, vfmlslq_laneq_high_u32):
++	Rename ...
++	(vfmlal_low_f16, vfmlsl_low_f16, vfmlalq_low_f16, vfmlslq_low_f16,
++	vfmlal_high_f16, vfmlsl_high_f16, vfmlalq_high_f16, vfmlslq_high_f16,
++	vfmlal_lane_low_f16, vfmlsl_lane_low_f16, vfmlal_laneq_low_f16,
++	vfmlsl_laneq_low_f16, vfmlalq_lane_low_f16, vfmlslq_lane_low_f16,
++	vfmlalq_laneq_low_f16, vfmlslq_laneq_low_f16, vfmlal_lane_high_f16,
++	vfmlsl_lane_high_f16, vfmlal_laneq_high_f16, vfmlsl_laneq_high_f16,
++	vfmlalq_lane_high_f16, vfmlslq_lane_high_f16, vfmlalq_laneq_high_f16,
++	vfmlslq_laneq_high_f16): ... To this.
++
++2020-09-24  Tamar Christina  <tamar.christina@arm.com>
++
++	Backported from master:
++	2018-05-21  Tamar Christina  <tamar.christina@arm.com>
++
++	PR target/71233
++	* config/aarch64/aarch64-simd.md (aarch64_eor3qv8hi): Change to
++	eor3q<mode>4.
++	(aarch64_bcaxqv8hi): Change to bcaxq<mode>4.
++	* config/aarch64/aarch64-simd-builtins.def (veor3q_u8, veor3q_u32,
++	veor3q_u64, veor3q_s8, veor3q_s16, veor3q_s32, veor3q_s64, vbcaxq_u8,
++	vbcaxq_u32, vbcaxq_u64, vbcaxq_s8, vbcaxq_s16, vbcaxq_s32,
++	vbcaxq_s64): New.
++	* config/aarch64/arm_neon.h: Likewise.
++	* config/aarch64/iterators.md (VQ_I): New.
++
++2020-09-24  Alex Coplan  <alex.coplan@arm.com>
++
++	* config/aarch64/aarch64-cores.def: Add Neoverse V1.
++	* config/aarch64/aarch64-tune.md: Regenerate.
++	* doc/invoke.texi: Document support for Neoverse V1.
++
 +2020-09-22  Vlad Lazar  <vlad.lazar@arm.com>
 +
 +	Backported from master:
@@ -7322,6 +7404,20 @@ index 8c4a1939f3d..eb4886b7289 100644
        && TYPE_MAIN_VARIANT (var_type) != var_type)
      C_TYPE_INCOMPLETE_VARS (var_type) = 0;
    return var_type;
+diff --git a/gcc/cfgexpand.c b/gcc/cfgexpand.c
+index 18565bf1dab..dcf491954f1 100644
+--- a/gcc/cfgexpand.c
++++ b/gcc/cfgexpand.c
+@@ -2972,6 +2972,9 @@ expand_asm_stmt (gasm *stmt)
+ 			   regname);
+ 		    return;
+ 		  }
++		/* Clobbering the stack pointer register.  */
++		else if (reg == (int) STACK_POINTER_REGNUM)
++		  crtl->sp_is_clobbered_by_asm = true;
+ 
+ 	        SET_HARD_REG_BIT (clobbered_regs, reg);
+ 	        rtx x = gen_rtx_REG (reg_raw_mode[reg], reg);
 diff --git a/gcc/cfgrtl.c b/gcc/cfgrtl.c
 index bf1504d082f..261aa5078e7 100644
 --- a/gcc/cfgrtl.c
@@ -7440,10 +7536,124 @@ index 5bccb408016..051e6afb097 100644
  #ifndef USED_FOR_TARGET
  #undef HAVE_AS_VSX
 diff --git a/gcc/config/aarch64/aarch64-builtins.c b/gcc/config/aarch64/aarch64-builtins.c
-index 02c6738d220..ced3aa6c100 100644
+index 02c6738d220..e6815900c90 100644
 --- a/gcc/config/aarch64/aarch64-builtins.c
 +++ b/gcc/config/aarch64/aarch64-builtins.c
-@@ -1751,10 +1751,12 @@ aarch64_atomic_assign_expand_fenv (tree *hold, tree *clear, tree *update)
+@@ -399,6 +399,11 @@ enum aarch64_builtins
+   AARCH64_PAUTH_BUILTIN_AUTIA1716,
+   AARCH64_PAUTH_BUILTIN_PACIA1716,
+   AARCH64_PAUTH_BUILTIN_XPACLRI,
++  /* Builtin for Arm8.3-a Javascript conversion instruction.  */
++  AARCH64_JSCVT,
++  /* Armv8.5-a RNG instruction builtins.  */
++  AARCH64_BUILTIN_RNG_RNDR,
++  AARCH64_BUILTIN_RNG_RNDRRS,
+   AARCH64_BUILTIN_MAX
+ };
+ 
+@@ -973,6 +978,24 @@ aarch64_init_pauth_hint_builtins (void)
+ 			    NULL_TREE);
+ }
+ 
++/* Add builtins for Random Number instructions.  */
++
++static void
++aarch64_init_rng_builtins (void)
++{
++  tree unsigned_ptr_type = build_pointer_type (unsigned_intDI_type_node);
++  tree ftype
++    = build_function_type_list (integer_type_node, unsigned_ptr_type, NULL);
++  aarch64_builtin_decls[AARCH64_BUILTIN_RNG_RNDR]
++    = add_builtin_function ("__builtin_aarch64_rndr", ftype,
++			    AARCH64_BUILTIN_RNG_RNDR, BUILT_IN_MD, NULL,
++			    NULL_TREE);
++  aarch64_builtin_decls[AARCH64_BUILTIN_RNG_RNDRRS]
++    = add_builtin_function ("__builtin_aarch64_rndrrs", ftype,
++			    AARCH64_BUILTIN_RNG_RNDRRS, BUILT_IN_MD, NULL,
++			    NULL_TREE);
++}
++
+ void
+ aarch64_init_builtins (void)
+ {
+@@ -1001,6 +1024,13 @@ aarch64_init_builtins (void)
+ 
+   aarch64_init_crc32_builtins ();
+   aarch64_init_builtin_rsqrt ();
++  aarch64_init_rng_builtins ();
++
++  tree ftype_jcvt
++    = build_function_type_list (intSI_type_node, double_type_node, NULL);
++  aarch64_builtin_decls[AARCH64_JSCVT]
++    = add_builtin_function ("__builtin_aarch64_jcvtzs", ftype_jcvt,
++			    AARCH64_JSCVT, BUILT_IN_MD, NULL, NULL_TREE);
+ 
+   /* Initialize pointer authentication builtins which are backed by instructions
+      in NOP encoding space.
+@@ -1313,6 +1343,42 @@ aarch64_expand_builtin_rsqrt (int fcode, tree exp, rtx target)
+   return target;
+ }
+ 
++/* Expand a random number builtin EXP with code FCODE, putting the result
++   int TARGET.  If IGNORE is true the return value is ignored.  */
++
++rtx
++aarch64_expand_rng_builtin (tree exp, rtx target, int fcode, int ignore)
++{
++  rtx pat;
++  enum insn_code icode;
++  if (fcode == AARCH64_BUILTIN_RNG_RNDR)
++    icode = CODE_FOR_aarch64_rndr;
++  else if (fcode == AARCH64_BUILTIN_RNG_RNDRRS)
++    icode = CODE_FOR_aarch64_rndrrs;
++  else
++    gcc_unreachable ();
++
++  rtx rand = gen_reg_rtx (DImode);
++  pat = GEN_FCN (icode) (rand);
++  if (!pat)
++    return NULL_RTX;
++
++  tree arg0 = CALL_EXPR_ARG (exp, 0);
++  rtx res_addr = expand_normal (arg0);
++  res_addr = convert_memory_address (Pmode, res_addr);
++  rtx res_mem = gen_rtx_MEM (DImode, res_addr);
++  emit_insn (pat);
++  emit_move_insn (res_mem, rand);
++  /* If the status result is unused don't generate the CSET code.  */
++  if (ignore)
++    return target;
++
++  rtx cc_reg = gen_rtx_REG (CC_Zmode, CC_REGNUM);
++  rtx cmp_rtx = gen_rtx_fmt_ee (NE, SImode, cc_reg, const0_rtx);
++  emit_insn (gen_aarch64_cstoresi (target, cmp_rtx, cc_reg));
++  return target;
++}
++
+ /* Expand an expression EXP that calls a built-in function,
+    with result going to TARGET if that's convenient.  */
+ rtx
+@@ -1391,6 +1457,19 @@ aarch64_expand_builtin (tree exp,
+ 	}
+ 
+       return target;
++
++    case AARCH64_JSCVT:
++      {
++	expand_operand ops[2];
++	create_output_operand (&ops[0], target, SImode);
++	op0 = expand_normal (CALL_EXPR_ARG (exp, 0));
++	create_input_operand (&ops[1], op0, DFmode);
++	expand_insn (CODE_FOR_aarch64_fjcvtzs, 2, ops);
++	return ops[0].value;
++      }
++    case AARCH64_BUILTIN_RNG_RNDR:
++    case AARCH64_BUILTIN_RNG_RNDRRS:
++      return aarch64_expand_rng_builtin (exp, target, fcode, ignore);
+     }
+ 
+   if (fcode >= AARCH64_SIMD_BUILTIN_BASE && fcode <= AARCH64_SIMD_BUILTIN_MAX)
+@@ -1751,10 +1830,12 @@ aarch64_atomic_assign_expand_fenv (tree *hold, tree *clear, tree *update)
    mask_sr = build_int_cst (unsigned_type_node,
  			   ~(AARCH64_FE_ALL_EXCEPT));
  
@@ -7460,7 +7670,7 @@ index 02c6738d220..ced3aa6c100 100644
  
    masked_fenv_cr = build2 (BIT_AND_EXPR, unsigned_type_node, fenv_cr, mask_cr);
    masked_fenv_sr = build2 (BIT_AND_EXPR, unsigned_type_node, fenv_sr, mask_sr);
-@@ -1786,8 +1788,9 @@ aarch64_atomic_assign_expand_fenv (tree *hold, tree *clear, tree *update)
+@@ -1786,8 +1867,9 @@ aarch64_atomic_assign_expand_fenv (tree *hold, tree *clear, tree *update)
         __atomic_feraiseexcept (new_fenv_var);  */
  
    new_fenv_var = create_tmp_var_raw (unsigned_type_node);
@@ -7472,6 +7682,27 @@ index 02c6738d220..ced3aa6c100 100644
    restore_fnenv = build_call_expr (set_fpsr, 1, fenv_sr);
    atomic_feraiseexcept = builtin_decl_implicit (BUILT_IN_ATOMIC_FERAISEEXCEPT);
    update_call = build_call_expr (atomic_feraiseexcept, 1,
+diff --git a/gcc/config/aarch64/aarch64-c.c b/gcc/config/aarch64/aarch64-c.c
+index 108c0120394..4ad96f5e4af 100644
+--- a/gcc/config/aarch64/aarch64-c.c
++++ b/gcc/config/aarch64/aarch64-c.c
+@@ -109,6 +109,7 @@ aarch64_update_cpp_builtins (cpp_reader *pfile)
+ 
+   aarch64_def_or_undef (TARGET_CRC32, "__ARM_FEATURE_CRC32", pfile);
+   aarch64_def_or_undef (TARGET_DOTPROD, "__ARM_FEATURE_DOTPROD", pfile);
++  aarch64_def_or_undef (TARGET_JSCVT, "__ARM_FEATURE_JCVT", pfile);
+ 
+   cpp_undef (pfile, "__AARCH64_CMODEL_TINY__");
+   cpp_undef (pfile, "__AARCH64_CMODEL_SMALL__");
+@@ -155,6 +156,8 @@ aarch64_update_cpp_builtins (cpp_reader *pfile)
+   aarch64_def_or_undef (TARGET_SM4, "__ARM_FEATURE_SM4", pfile);
+   aarch64_def_or_undef (TARGET_F16FML, "__ARM_FEATURE_FP16_FML", pfile);
+ 
++  aarch64_def_or_undef (TARGET_RNG, "__ARM_FEATURE_RNG", pfile);
++
+   /* Not for ACLE, but required to keep "float.h" correct if we switch
+      target between implementations that do or do not support ARMv8.2-A
+      16-bit floating-point extensions.  */
 diff --git a/gcc/config/aarch64/aarch64-cores.def b/gcc/config/aarch64/aarch64-cores.def
 index f48b7c22b2d..35ce68ad077 100644
 --- a/gcc/config/aarch64/aarch64-cores.def
@@ -7489,6 +7720,18 @@ index f48b7c22b2d..35ce68ad077 100644
  /* ARMv8-A big.LITTLE implementations.  */
  
  AARCH64_CORE("cortex-a57.cortex-a53",  cortexa57cortexa53, cortexa53, 8A,  AARCH64_FL_FOR_ARCH8 | AARCH64_FL_CRC, cortexa57, 0x41, AARCH64_BIG_LITTLE (0xd07, 0xd03), -1)
+diff --git a/gcc/config/aarch64/aarch64-option-extensions.def b/gcc/config/aarch64/aarch64-option-extensions.def
+index a575448e406..bfd9245c595 100644
+--- a/gcc/config/aarch64/aarch64-option-extensions.def
++++ b/gcc/config/aarch64/aarch64-option-extensions.def
+@@ -114,4 +114,7 @@ AARCH64_OPT_EXTENSION("fp16fml", AARCH64_FL_F16FML, AARCH64_FL_FP | AARCH64_FL_F
+    Disabling "sve" just disables "sve".  */
+ AARCH64_OPT_EXTENSION("sve", AARCH64_FL_SVE, AARCH64_FL_FP | AARCH64_FL_SIMD | AARCH64_FL_F16, 0, false, "sve")
+ 
++/* Enabling/Disabling "rng" only changes "rng".  */
++AARCH64_OPT_EXTENSION("rng", AARCH64_FL_RNG, 0, 0, false, "")
++
+ #undef AARCH64_OPT_EXTENSION
 diff --git a/gcc/config/aarch64/aarch64-protos.h b/gcc/config/aarch64/aarch64-protos.h
 index cda2895d28e..0f1dc75a27f 100644
 --- a/gcc/config/aarch64/aarch64-protos.h
@@ -8788,6 +9031,104 @@ index 20761578fb6..e20a4ccc6dc 100644
      return false;
  
    size = (diff + 1) * GET_MODE_UNIT_SIZE (d->vmode);
+diff --git a/gcc/config/aarch64/aarch64.h b/gcc/config/aarch64/aarch64.h
+index 976f9afae54..feda16e80a0 100644
+--- a/gcc/config/aarch64/aarch64.h
++++ b/gcc/config/aarch64/aarch64.h
+@@ -157,6 +157,7 @@ extern unsigned aarch64_architecture_version;
+ #define AARCH64_FL_SM4	      (1 << 17)  /* Has ARMv8.4-A SM3 and SM4.  */
+ #define AARCH64_FL_SHA3	      (1 << 18)  /* Has ARMv8.4-a SHA3 and SHA512.  */
+ #define AARCH64_FL_F16FML     (1 << 19)  /* Has ARMv8.4-a FP16 extensions.  */
++#define AARCH64_FL_RNG        (1 << 23)  /* ARMv8.5-A Random Number Insns.  */
+ 
+ /* Has FP and SIMD.  */
+ #define AARCH64_FL_FPSIMD     (AARCH64_FL_FP | AARCH64_FL_SIMD)
+@@ -196,6 +197,7 @@ extern unsigned aarch64_architecture_version;
+ #define AARCH64_ISA_SM4	           (aarch64_isa_flags & AARCH64_FL_SM4)
+ #define AARCH64_ISA_SHA3	   (aarch64_isa_flags & AARCH64_FL_SHA3)
+ #define AARCH64_ISA_F16FML	   (aarch64_isa_flags & AARCH64_FL_F16FML)
++#define AARCH64_ISA_RNG		   (aarch64_isa_flags & AARCH64_FL_RNG)
+ 
+ /* Crypto is an optional extension to AdvSIMD.  */
+ #define TARGET_CRYPTO (TARGET_SIMD && AARCH64_ISA_CRYPTO)
+@@ -234,6 +236,12 @@ extern unsigned aarch64_architecture_version;
+ /* ARMv8.3-A features.  */
+ #define TARGET_ARMV8_3	(AARCH64_ISA_V8_3)
+ 
++/* Javascript conversion instruction from Armv8.3-a.  */
++#define TARGET_JSCVT	(TARGET_FLOAT && AARCH64_ISA_V8_3)
++
++/* Random number instructions from Armv8.5-a.  */
++#define TARGET_RNG (AARCH64_ISA_RNG)
++
+ /* Make sure this is always defined so we don't have to check for ifdefs
+    but rather use normal ifs.  */
+ #ifndef TARGET_FIX_ERR_A53_835769_DEFAULT
+diff --git a/gcc/config/aarch64/aarch64.md b/gcc/config/aarch64/aarch64.md
+index 82db038c77a..9fc555c4006 100644
+--- a/gcc/config/aarch64/aarch64.md
++++ b/gcc/config/aarch64/aarch64.md
+@@ -105,6 +105,7 @@
+     UNSPEC_CRC32X
+     UNSPEC_FCVTZS
+     UNSPEC_FCVTZU
++    UNSPEC_FJCVTZS
+     UNSPEC_URECPE
+     UNSPEC_FRECPE
+     UNSPEC_FRECPS
+@@ -200,6 +201,8 @@
+     UNSPECV_SET_FPSR		; Represent assign of FPSR content.
+     UNSPECV_BLOCKAGE		; Represent a blockage
+     UNSPECV_PROBE_STACK_RANGE	; Represent stack range probing.
++    UNSPEC_RNDR			; Represent RNDR
++    UNSPEC_RNDRRS		; Represent RNDRRS
+   ]
+ )
+ 
+@@ -5885,6 +5888,16 @@
+   [(set_attr "length" "0")]
+ )
+ 
++(define_insn "aarch64_fjcvtzs"
++  [(set (match_operand:SI 0 "register_operand" "=r")
++	(unspec:SI [(match_operand:DF 1 "register_operand" "w")]
++		   UNSPEC_FJCVTZS))
++   (clobber (reg:CC CC_REGNUM))]
++  "TARGET_JSCVT"
++  "fjcvtzs\\t%w0, %d1"
++  [(set_attr "type" "f_cvtf2i")]
++)
++
+ ;; Pointer authentication patterns are always provided.  In architecture
+ ;; revisions prior to ARMv8.3-A these HINT instructions operate as NOPs.
+ ;; This lets the user write portable software which authenticates pointers
+@@ -6087,6 +6100,26 @@
+ 		   (match_operand 1))
+ 	      (clobber (reg:CC CC_REGNUM))])])
+ 
++(define_insn "aarch64_rndr"
++  [(set (match_operand:DI 0 "register_operand" "=r")
++	(unspec_volatile:DI [(const_int 0)] UNSPEC_RNDR))
++   (set (reg:CC_Z CC_REGNUM)
++	(unspec_volatile:CC_Z [(const_int 0)] UNSPEC_RNDR))]
++  "TARGET_RNG"
++  "mrs\t%0, RNDR"
++  [(set_attr "type" "mrs")]
++)
++
++(define_insn "aarch64_rndrrs"
++  [(set (match_operand:DI 0 "register_operand" "=r")
++	(unspec_volatile:DI [(const_int 0)] UNSPEC_RNDRRS))
++   (set (reg:CC_Z CC_REGNUM)
++	(unspec_volatile:CC_Z [(const_int 0)] UNSPEC_RNDRRS))]
++  "TARGET_RNG"
++  "mrs\t%0, RNDRRS"
++  [(set_attr "type" "mrs")]
++)
++
+ ;; AdvSIMD Stuff
+ (include "aarch64-simd.md")
+ 
 diff --git a/gcc/config/aarch64/aarch64.opt b/gcc/config/aarch64/aarch64.opt
 index 52eaf8c6f40..b4970b73607 100644
 --- a/gcc/config/aarch64/aarch64.opt
@@ -8800,6 +9141,52 @@ index 52eaf8c6f40..b4970b73607 100644
 +moutline-atomics
 +Target Report Mask(OUTLINE_ATOMICS) Save
 +Generate local calls to out-of-line atomic operations.
+diff --git a/gcc/config/aarch64/arm_acle.h b/gcc/config/aarch64/arm_acle.h
+index 8504c3f1d76..8d16c8763ff 100644
+--- a/gcc/config/aarch64/arm_acle.h
++++ b/gcc/config/aarch64/arm_acle.h
+@@ -29,6 +29,16 @@
+ 
+ #include <stdint.h>
+ 
++#pragma GCC push_options
++#pragma GCC target ("arch=armv8.3-a")
++__extension__ static __inline int32_t __attribute__ ((__always_inline__))
++__jcvt (double __a)
++{
++  return __builtin_aarch64_jcvtzs (__a);
++}
++
++#pragma GCC pop_options
++
+ #pragma GCC push_options
+ 
+ #pragma GCC target ("+nothing+crc")
+@@ -85,6 +95,24 @@ __crc32d (uint32_t __a, uint64_t __b)
+   return __builtin_aarch64_crc32x (__a, __b);
+ }
+ 
++#pragma GCC pop_options
++
++#pragma GCC push_options
++#pragma GCC target ("+nothing+rng")
++__extension__ static __inline int __attribute__ ((__always_inline__))
++__rndr (uint64_t *__res)
++{
++  return __builtin_aarch64_rndr (__res);
++}
++
++__extension__ static __inline int __attribute__ ((__always_inline__))
++__rndrrs (uint64_t *__res)
++{
++  return __builtin_aarch64_rndrrs (__res);
++}
++
++#pragma GCC pop_options
++
+ #ifdef __cplusplus
+ }
+ #endif
 diff --git a/gcc/config/aarch64/arm_neon.h b/gcc/config/aarch64/arm_neon.h
 index 115cedcaa5b..e34deec729c 100644
 --- a/gcc/config/aarch64/arm_neon.h
@@ -14468,7 +14855,7 @@ index fe23ab0b829..35bd8add04a 100644
  /* SSE2 MMX */
  BDESC (OPTION_MASK_ISA_SSE2 | OPTION_MASK_ISA_MMX, CODE_FOR_mmx_addv1di3, "__builtin_ia32_paddq", IX86_BUILTIN_PADDQ, UNKNOWN, (int) V1DI_FTYPE_V1DI_V1DI)
 diff --git a/gcc/config/i386/i386.c b/gcc/config/i386/i386.c
-index 5d2e3945f6e..f3c722b51e9 100644
+index 5d2e3945f6e..ce20bc2ab4e 100644
 --- a/gcc/config/i386/i386.c
 +++ b/gcc/config/i386/i386.c
 @@ -2498,7 +2498,12 @@ rest_of_insert_endbranch (void)
@@ -14497,7 +14884,22 @@ index 5d2e3945f6e..f3c722b51e9 100644
    const wide_int_bitmask PTA_KNL = PTA_BROADWELL | PTA_AVX512PF | PTA_AVX512ER
      | PTA_AVX512F | PTA_AVX512CD;
    const wide_int_bitmask PTA_BONNELL = PTA_CORE2 | PTA_MOVBE;
-@@ -14596,8 +14601,13 @@ ix86_expand_epilogue (int style)
+@@ -12523,10 +12528,12 @@ ix86_update_stack_boundary (void)
+ static rtx
+ ix86_get_drap_rtx (void)
+ {
+-  /* We must use DRAP if there are outgoing arguments on stack and
++  /* We must use DRAP if there are outgoing arguments on stack or
++     the stack pointer register is clobbered by asm statment and
+      ACCUMULATE_OUTGOING_ARGS is false.  */
+   if (ix86_force_drap
+-      || (cfun->machine->outgoing_args_on_stack
++      || ((cfun->machine->outgoing_args_on_stack
++	   || crtl->sp_is_clobbered_by_asm)
+ 	  && !ACCUMULATE_OUTGOING_ARGS))
+     crtl->need_drap = true;
+ 
+@@ -14596,8 +14603,13 @@ ix86_expand_epilogue (int style)
  	      t = plus_constant (Pmode, t, m->fs.fp_offset - UNITS_PER_WORD);
  	      emit_insn (gen_rtx_SET (sa, t));
  
@@ -14513,7 +14915,7 @@ index 5d2e3945f6e..f3c722b51e9 100644
  
  	      /* Note that we use SA as a temporary CFA, as the return
  		 address is at the proper place relative to it.  We
-@@ -14612,7 +14622,7 @@ ix86_expand_epilogue (int style)
+@@ -14612,7 +14624,7 @@ ix86_expand_epilogue (int style)
  	      add_reg_note (insn, REG_CFA_DEF_CFA,
  			    plus_constant (Pmode, sa, UNITS_PER_WORD));
  	      ix86_add_queued_cfa_restore_notes (insn);
@@ -14522,7 +14924,7 @@ index 5d2e3945f6e..f3c722b51e9 100644
  	      RTX_FRAME_RELATED_P (insn) = 1;
  
  	      m->fs.cfa_reg = sa;
-@@ -19922,8 +19932,6 @@ ix86_output_addr_diff_elt (FILE *file, int value, int rel)
+@@ -19922,8 +19934,6 @@ ix86_output_addr_diff_elt (FILE *file, int value, int rel)
    if (TARGET_64BIT || TARGET_VXWORKS_RTP)
      fprintf (file, "%s%s%d-%s%d\n",
  	     directive, LPREFIX, value, LPREFIX, rel);
@@ -14531,7 +14933,7 @@ index 5d2e3945f6e..f3c722b51e9 100644
  #if TARGET_MACHO
    else if (TARGET_MACHO)
      {
-@@ -19932,6 +19940,8 @@ ix86_output_addr_diff_elt (FILE *file, int value, int rel)
+@@ -19932,6 +19942,8 @@ ix86_output_addr_diff_elt (FILE *file, int value, int rel)
        putc ('\n', file);
      }
  #endif
@@ -14540,7 +14942,7 @@ index 5d2e3945f6e..f3c722b51e9 100644
    else
      asm_fprintf (file, ASM_LONG "%U%s+[.-%s%d]\n",
  		 GOT_SYMBOL_NAME, LPREFIX, value);
-@@ -44528,43 +44538,51 @@ emit_reduc_half (rtx dest, rtx src, int i)
+@@ -44528,43 +44540,51 @@ emit_reduc_half (rtx dest, rtx src, int i)
        break;
      case E_V64QImode:
      case E_V32HImode:
@@ -14621,7 +15023,7 @@ index 5d2e3945f6e..f3c722b51e9 100644
        break;
      default:
        gcc_unreachable ();
-@@ -46753,7 +46771,7 @@ expand_vec_perm_pshufb (struct expand_vec_perm_d *d)
+@@ -46753,7 +46773,7 @@ expand_vec_perm_pshufb (struct expand_vec_perm_d *d)
  	      /* vpshufb only works intra lanes, it is not
  		 possible to shuffle bytes in between the lanes.  */
  	      for (i = 0; i < nelt; ++i)
@@ -14630,7 +15032,7 @@ index 5d2e3945f6e..f3c722b51e9 100644
  		  return false;
  	    }
  	}
-@@ -50337,7 +50355,9 @@ ix86_get_mask_mode (poly_uint64 nunits, poly_uint64 vector_size)
+@@ -50337,7 +50357,9 @@ ix86_get_mask_mode (poly_uint64 nunits, poly_uint64 vector_size)
    if ((TARGET_AVX512F && vector_size == 64)
        || (TARGET_AVX512VL && (vector_size == 32 || vector_size == 16)))
      {
@@ -14641,7 +15043,7 @@ index 5d2e3945f6e..f3c722b51e9 100644
  	return smallest_int_mode_for_size (nunits);
      }
  
-@@ -50970,11 +50990,12 @@ ix86_atomic_assign_expand_fenv (tree *hold, tree *clear, tree *update)
+@@ -50970,11 +50992,12 @@ ix86_atomic_assign_expand_fenv (tree *hold, tree *clear, tree *update)
        *clear = build_call_expr (fnclex, 0);
        tree sw_var = create_tmp_var_raw (short_unsigned_type_node);
        tree fnstsw_call = build_call_expr (fnstsw, 0);
@@ -14658,7 +15060,7 @@ index 5d2e3945f6e..f3c722b51e9 100644
        *update = build2 (COMPOUND_EXPR, integer_type_node,
  			sw_mod, update_mod);
        tree update_fldenv = build_call_expr (fldenv, 1, fenv_addr);
-@@ -50987,15 +51008,17 @@ ix86_atomic_assign_expand_fenv (tree *hold, tree *clear, tree *update)
+@@ -50987,15 +51010,17 @@ ix86_atomic_assign_expand_fenv (tree *hold, tree *clear, tree *update)
        tree stmxcsr = ix86_builtins[IX86_BUILTIN_STMXCSR];
        tree ldmxcsr = ix86_builtins[IX86_BUILTIN_LDMXCSR];
        tree stmxcsr_hold_call = build_call_expr (stmxcsr, 0);
@@ -14680,7 +15082,7 @@ index 5d2e3945f6e..f3c722b51e9 100644
        tree ldmxcsr_hold_call = build_call_expr (ldmxcsr, 1, mxcsr_mod_var);
        tree hold_all = build2 (COMPOUND_EXPR, unsigned_type_node,
  			      hold_assign_orig, hold_assign_mod);
-@@ -51024,8 +51047,8 @@ ix86_atomic_assign_expand_fenv (tree *hold, tree *clear, tree *update)
+@@ -51024,8 +51049,8 @@ ix86_atomic_assign_expand_fenv (tree *hold, tree *clear, tree *update)
  			    exceptions_assign);
  	}
        else
@@ -16677,7 +17079,7 @@ index f3d7c5720b7..a46a9cb31f7 100644
  
  @node AVR Options
 diff --git a/gcc/doc/sourcebuild.texi b/gcc/doc/sourcebuild.texi
-index 773ecf81c35..ad7dea3744c 100644
+index 773ecf81c35..eb85aca5042 100644
 --- a/gcc/doc/sourcebuild.texi
 +++ b/gcc/doc/sourcebuild.texi
 @@ -1238,6 +1238,18 @@ This DejaGnu directive compares @var{regexp} to the combined output
@@ -16699,6 +17101,16 @@ index 773ecf81c35..ad7dea3744c 100644
  @subsubsection Specify additional files for a test
  
  @table @code
+@@ -1886,6 +1898,9 @@ AArch64 target which generates instruction sequences for big endian.
+ Binutils installed on test system supports relocation types required by -fpic
+ for AArch64 small memory model.
+ 
++@item aarch64_fjcvtzs_hw
++AArch64 target that is able to generate and execute armv8.3-a FJCVTZS
++instruction.
+ @end table
+ 
+ @subsubsection MIPS-specific attributes
 diff --git a/gcc/doc/tm.texi b/gcc/doc/tm.texi
 index bd8b917ba82..340e856c4da 100644
 --- a/gcc/doc/tm.texi
@@ -16916,6 +17328,20 @@ index 23107c0c33f..467de650394 100644
      }
    else
      cached_next_real_insn = NULL;
+diff --git a/gcc/emit-rtl.h b/gcc/emit-rtl.h
+index 4e7bd1ec26d..55dc3e84e9c 100644
+--- a/gcc/emit-rtl.h
++++ b/gcc/emit-rtl.h
+@@ -265,6 +265,9 @@ struct GTY(()) rtl_data {
+      pass_stack_ptr_mod has run.  */
+   bool sp_is_unchanging;
+ 
++  /* True if the stack pointer is clobbered by asm statement.  */
++  bool sp_is_clobbered_by_asm;
++
+   /* Nonzero if function being compiled doesn't contain any calls
+      (ignoring the prologue and epilogue).  This is set prior to
+      register allocation in IRA and is valid for the remaining
 diff --git a/gcc/explow.c b/gcc/explow.c
 index 72e52703c48..79c781cb390 100644
 --- a/gcc/explow.c
@@ -18437,10 +18863,82 @@ index d06e88a8135..25377232248 100644
  
    if (warn_packed && TREE_CODE (rli->t) == RECORD_TYPE
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index ab652ddc144..d35366fb1ef 100644
+index ab652ddc144..b2e821ad7b0 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,922 @@
+@@ -1,3 +1,994 @@
++2020-09-24  H.J. Lu  <hjl.tools@gmail.com>
++
++	Backported from master:
++	2020-09-16  H.J. Lu  <hjl.tools@gmail.com>
++
++	PR target/97032
++	* gcc.target/i386/pr97032.c: New test.
++
++2020-09-24  Kyrylo Tkachov  <kyrylo.tkachov@arm.com>
++
++	Backported from master:
++	2020-09-24  Kyrylo Tkachov  <kyrylo.tkachov@arm.com>
++		    Andrea Corallo   <andrea.corallo@arm.com>
++
++	PR target/71233
++	* gcc.target/aarch64/acle/jcvt_1.c: New test.
++	* gcc.target/aarch64/acle/jcvt_2.c: New testcase.
++	* lib/target-supports.exp
++	(check_effective_target_aarch64_fjcvtzs_hw): Add new check for
++	FJCVTZS hw.
++
++2020-09-24  Tamar Christina  <tamar.christina@arm.com>
++
++	Backported from master:
++	2019-02-25  Tamar Christina  <tamar.christina@arm.com>
++
++	PR target/71233
++	* gcc.target/aarch64/fp16_fmul_high.h (test_vfmlal_high_u32,
++	test_vfmlalq_high_u32, test_vfmlsl_high_u32, test_vfmlslq_high_u32):
++	Rename ...
++	(test_vfmlal_high_f16, test_vfmlalq_high_f16, test_vfmlsl_high_f16,
++	test_vfmlslq_high_f16): ... To this.
++	* gcc.target/aarch64/fp16_fmul_lane_high.h (test_vfmlal_lane_high_u32,
++	tets_vfmlsl_lane_high_u32, test_vfmlal_laneq_high_u32,
++	test_vfmlsl_laneq_high_u32, test_vfmlalq_lane_high_u32,
++	test_vfmlslq_lane_high_u32, test_vfmlalq_laneq_high_u32,
++	test_vfmlslq_laneq_high_u32): Rename ...
++	(test_vfmlal_lane_high_f16, tets_vfmlsl_lane_high_f16,
++	test_vfmlal_laneq_high_f16, test_vfmlsl_laneq_high_f16,
++	test_vfmlalq_lane_high_f16, test_vfmlslq_lane_high_f16,
++	test_vfmlalq_laneq_high_f16, test_vfmlslq_laneq_high_f16): ... To this.
++	* gcc.target/aarch64/fp16_fmul_lane_low.h (test_vfmlal_lane_low_u32,
++	test_vfmlsl_lane_low_u32, test_vfmlal_laneq_low_u32,
++	test_vfmlsl_laneq_low_u32, test_vfmlalq_lane_low_u32,
++	test_vfmlslq_lane_low_u32, test_vfmlalq_laneq_low_u32,
++	test_vfmlslq_laneq_low_u32): Rename ...
++	(test_vfmlal_lane_low_f16, test_vfmlsl_lane_low_f16,
++	test_vfmlal_laneq_low_f16, test_vfmlsl_laneq_low_f16,
++	test_vfmlalq_lane_low_f16, test_vfmlslq_lane_low_f16,
++	test_vfmlalq_laneq_low_f16, test_vfmlslq_laneq_low_f16): ... To this.
++	* gcc.target/aarch64/fp16_fmul_low.h (test_vfmlal_low_u32,
++	test_vfmlalq_low_u32, test_vfmlsl_low_u32, test_vfmlslq_low_u32):
++	Rename ...
++	(test_vfmlal_low_f16, test_vfmlalq_low_f16, test_vfmlsl_low_f16,
++	test_vfmlslq_low_f16): ... To This.
++	* lib/target-supports.exp
++	(check_effective_target_arm_fp16fml_neon_ok_nocache): Update test.
++
++2020-09-24  Tamar Christina  <tamar.christina@arm.com>
++
++	Backported from master:
++	2018-05-21  Tamar Christina  <tamar.christina@arm.com>
++
++	PR target/71233
++	* gcc.target/aarch64/sha3.h (veor3q_u8, veor3q_u32,
++	veor3q_u64, veor3q_s8, veor3q_s16, veor3q_s32, veor3q_s64, vbcaxq_u8,
++	vbcaxq_u32, vbcaxq_u64, vbcaxq_s8, vbcaxq_s16, vbcaxq_s32,
++	vbcaxq_s64): New.
++	* gcc.target/aarch64/sha3_1.c: Likewise.
++	* gcc.target/aarch64/sha3_2.c: Likewise.
++	* gcc.target/aarch64/sha3_3.c: Likewise.
++
 +2020-09-22  Vlad Lazar  <vlad.lazar@arm.com>
 +
 +	Backported from master:
@@ -21817,6 +22315,125 @@ index 00000000000..45c740dbe9e
 +{
 +  return x == 0 ? x : y;
 +}
+diff --git a/gcc/testsuite/gcc.target/aarch64/acle/jcvt_1.c b/gcc/testsuite/gcc.target/aarch64/acle/jcvt_1.c
+new file mode 100644
+index 00000000000..0c900b1b57c
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/aarch64/acle/jcvt_1.c
+@@ -0,0 +1,15 @@
++/* Test the __jcvt ACLE intrinsic.  */
++/* { dg-do compile } */
++/* { dg-options "-O2 -march=armv8.3-a" } */
++
++#include <arm_acle.h>
++
++#ifdef __ARM_FEATURE_JCVT
++int32_t
++test_jcvt (double a)
++{
++  return __jcvt (a);
++}
++#endif
++
++/* { dg-final { scan-assembler-times "fjcvtzs\tw\[0-9\]+, d\[0-9\]+\n" 1 } } */
+diff --git a/gcc/testsuite/gcc.target/aarch64/acle/jcvt_2.c b/gcc/testsuite/gcc.target/aarch64/acle/jcvt_2.c
+new file mode 100644
+index 00000000000..ea2dfd14cf2
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/aarch64/acle/jcvt_2.c
+@@ -0,0 +1,33 @@
++/* Test the __jcvt ACLE intrinsic.  */
++/* { dg-do run } */
++/* { dg-options "-O2 -march=armv8.3-a -save-temps" } */
++/* { dg-require-effective-target aarch64_fjcvtzs_hw } */
++
++#include <arm_acle.h>
++
++extern void abort (void);
++
++#ifdef __ARM_FEATURE_JCVT
++volatile int32_t x;
++
++int __attribute__((noinline))
++foo (double a, int b, int c)
++{
++  b = b > c;
++  x = __jcvt (a);
++  return b;
++}
++
++int
++main (void)
++{
++  int x = foo (1.1, 2, 3);
++  if (x)
++    abort ();
++
++  return 0;
++}
++
++#endif
++
++/* { dg-final { scan-assembler-times "fjcvtzs\tw\[0-9\]+, d\[0-9\]+\n" 1 } } */
+diff --git a/gcc/testsuite/gcc.target/aarch64/acle/rng_1.c b/gcc/testsuite/gcc.target/aarch64/acle/rng_1.c
+new file mode 100644
+index 00000000000..90be6939ed9
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/aarch64/acle/rng_1.c
+@@ -0,0 +1,53 @@
++/* Test the __rndr ACLE intrinsic.  */
++/* { dg-do compile } */
++/* { dg-options "-O2 -march=armv8.3-a+rng" } */
++
++#include <arm_acle.h>
++
++#ifdef __ARM_FEATURE_RNG
++/* Check that instruction is generated when status result is unused.  */
++uint64_t
++test_rndr_no_stat (void)
++{
++  uint64_t res;
++  __rndr (&res);
++  return res;
++}
++
++/* Check that instruction is generated when random number result
++   is unused.  */
++int
++test_rndr_error_check (void)
++{
++  uint64_t res;
++  int fail = __rndr (&res);
++  if (fail)
++    return 0;
++  return -1;
++}
++
++/* { dg-final { scan-assembler-times "mrs\tx..?, RNDR\n" 2 } } */
++
++/* Check that instruction is generated when status result is unused.  */
++uint64_t
++test_rndrrs_no_stat (void)
++{
++  uint64_t res;
++  __rndrrs (&res);
++  return res;
++}
++
++/* Check that instruction is generated when random number result
++   is unused.  */
++int
++test_rndrrs_error_check (void)
++{
++  uint64_t res;
++  int fail = __rndrrs (&res);
++  if (fail)
++    return 0;
++  return -1;
++}
++
++/* { dg-final { scan-assembler-times "mrs\tx..?, RNDRRS\n" 2 } } */
++#endif
 diff --git a/gcc/testsuite/gcc.target/aarch64/advsimd-intrinsics/vld1x3.c b/gcc/testsuite/gcc.target/aarch64/advsimd-intrinsics/vld1x3.c
 new file mode 100644
 index 00000000000..6ddd507d9cf
@@ -24251,6 +24868,34 @@ index 00000000000..34a1e069eac
 +{
 +  return __builtin_ia32_movq128 (v);  /* { dg-error "" } */
 +}
+diff --git a/gcc/testsuite/gcc.target/i386/pr97032.c b/gcc/testsuite/gcc.target/i386/pr97032.c
+new file mode 100644
+index 00000000000..b9ef2ad0c05
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/i386/pr97032.c
+@@ -0,0 +1,22 @@
++/* { dg-do compile { target { ia32 && fstack_protector } } } */
++/* { dg-options "-O2 -mincoming-stack-boundary=2 -fstack-protector-all" } */
++
++#include <stdarg.h>
++
++extern int *__errno_location (void);
++
++long
++sys_socketcall (int op, ...)
++{
++  long int res;
++  va_list ap;
++  va_start (ap, op);
++  asm volatile ("push %%ebx; movl %2, %%ebx; int $0x80; pop %%ebx"
++		: "=a" (res) : "0" (102), "ri" (16), "c" (ap) : "memory", "esp");
++  if (__builtin_expect (res > 4294963200UL, 0))
++    *__errno_location () = -res;
++  va_end (ap);
++  return res;
++}
++
++/* { dg-final { scan-assembler "call\[ \t\]*_?__errno_location" } } */
 diff --git a/gcc/testsuite/gcc.target/powerpc/builtins-1-p9-runnable.c b/gcc/testsuite/gcc.target/powerpc/builtins-1-p9-runnable.c
 index acaebb60f1c..5c35b049623 100644
 --- a/gcc/testsuite/gcc.target/powerpc/builtins-1-p9-runnable.c
@@ -26618,10 +27263,38 @@ index 3770f698c46..81014b9a09a 100644
        lappend saved_compiler_env_var [list $var 1 $::env($var)]
      } else {
 diff --git a/gcc/testsuite/lib/target-supports.exp b/gcc/testsuite/lib/target-supports.exp
-index e6b84041fc5..3d85e17b74f 100644
+index e6b84041fc5..fde6cf45274 100644
 --- a/gcc/testsuite/lib/target-supports.exp
 +++ b/gcc/testsuite/lib/target-supports.exp
-@@ -4556,7 +4556,7 @@ proc check_effective_target_arm_fp16fml_neon_ok_nocache { } {
+@@ -4386,6 +4386,27 @@ proc check_effective_target_arm_neonv2_hw { } {
+     } [add_options_for_arm_neonv2 ""]]
+ }
+ 
++# Return 1 if the target supports executing the armv8.3-a FJCVTZS
++# instruction.
++proc check_effective_target_aarch64_fjcvtzs_hw { } {
++    if { ![istarget aarch64*-*-*] } {
++	return 0
++    }
++    return [check_runtime aarch64_fjcvtzs_hw_available {
++	int
++	main (void)
++	{
++	  double in = 25.1;
++	  int out;
++	  asm volatile ("fjcvtzs %w0, %d1"
++			: "=r" (out)
++			: "w" (in)
++			: /* No clobbers.  */);
++	  return out != 25;
++	}
++    } "-march=armv8.3-a" ]
++}
++
+ # Return 1 if the target supports the ARMv8.1 Adv.SIMD extension, 0
+ # otherwise.  The test is valid for AArch64 and ARM.  Record the command
+ # line options needed.
+@@ -4556,7 +4577,7 @@ proc check_effective_target_arm_fp16fml_neon_ok_nocache { } {
  		float32x2_t
  		foo (float32x2_t r, float16x4_t a, float16x4_t b)
  		{
