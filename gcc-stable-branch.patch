@@ -1,8 +1,9 @@
-Alex Coplan (4):
+Alex Coplan (5):
       aarch64: PR target/94591: Don't generate invalid REV64 insns
       arm: Don't generate invalid LDRD insns
       aarch64: Add support for Neoverse V1 CPU
       arm: Add support for Neoverse V1 CPU
+      aarch64: Add support for Neoverse N2 CPU
 
 Alexandre Oliva (1):
       accept <case> and [cond] in ChangeLog
@@ -66,7 +67,8 @@ Fritz Reese (2):
       Backport form master: Fix fortran/85982 ICE in resolve_component.
       Indicate backport in changelogs from last commit.
 
-GCC Administrator (209):
+GCC Administrator (210):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -308,7 +310,7 @@ Hongyu Wang (1):
 Iain Sandoe (1):
       Darwin: Fix i686 bootstrap when the assembler supports GOTOFF in data.
 
-Jakub Jelinek (67):
+Jakub Jelinek (68):
       Bump BASE-VER to 8.4.1
       maintainer-scripts: Speed up git clone in gcc_release
       gimplify: Don't optimize register const vars to static [PR93949]
@@ -376,6 +378,7 @@ Jakub Jelinek (67):
       dwarf2out: Fix up dwarf2out_next_real_insn caching [PR96729]
       store-merging: Consider also overlapping stores earlier in the by bitpos sorting [PR97053]
       optabs: Don't reuse target for multi-word expansions if it overlaps operand(s) [PR97073]
+      s390: Fix up s390_atomic_assign_expand_fenv
 
 Jason Merrill (8):
       c++: Fix CTAD with multiple-arg ctor template [93248].
@@ -412,7 +415,7 @@ Jonathan Wakely (17):
 Kewen Lin (1):
       testsuite: Add -fno-common to pr82374.c [PR94077]
 
-Kyrylo Tkachov (13):
+Kyrylo Tkachov (14):
       [AArch64] Use __getauxval instead of getauxval in LSE detection code in libgcc
       aarch64: Add initial support for -mcpu=zeus
       Add support for __jcvt intrinsic
@@ -426,6 +429,7 @@ Kyrylo Tkachov (13):
       AArch64: Implement missing vrndns_f32 intrinsic
       AArch64: Implement missing p128<->f64 reinterpret intrinsics
       AArch64: Add Linux cpuinfo string for rng feature
+      AArch64: Add rng feature to Neoverse V1
 
 Marek Polacek (1):
       c++: Bogus error with alignof [PR90736]
@@ -5355,10 +5359,31 @@ index a2f28f43be3..6da4de57dc6 100644
 -8.4.0
 +8.4.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 142499c563c..d64294a2a7d 100644
+index 142499c563c..a7ece67f7e0 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,1812 @@
+@@ -1,3 +1,1833 @@
++2020-09-30  Kyrylo Tkachov  <kyrylo.tkachov@arm.com>
++
++	Backported from master:
++	2020-09-30  Kyrylo Tkachov  <kyrylo.tkachov@arm.com>
++
++	* config/aarch64/aarch64-option-extensions.def (rng): Add
++	cpuinfo string.
++
++2020-09-30  H.J. Lu  <hjl.tools@gmail.com>
++
++	Backported from master:
++	2020-09-30  H.J. Lu  <hjl.tools@gmail.com>
++
++	PR target/97184
++	* config/i386/i386.md (UNSPECV_MOVDIRI): Renamed to ...
++	(UNSPEC_MOVDIRI): This.
++	(UNSPECV_MOVDIR64B): Renamed to ...
++	(UNSPEC_MOVDIR64B): This.
++	(movdiri<mode>): Use SET operation.
++	(@movdir64b_<mode>): Likewise.
++
 +2020-09-29  Hongyu Wang  <hongyu.wang@intel.com>
 +
 +	Backported from master:
@@ -8218,18 +8243,21 @@ index 108c0120394..fbcf1d95338 100644
       target between implementations that do or do not support ARMv8.2-A
       16-bit floating-point extensions.  */
 diff --git a/gcc/config/aarch64/aarch64-cores.def b/gcc/config/aarch64/aarch64-cores.def
-index f48b7c22b2d..35ce68ad077 100644
+index f48b7c22b2d..6a766bfd7cd 100644
 --- a/gcc/config/aarch64/aarch64-cores.def
 +++ b/gcc/config/aarch64/aarch64-cores.def
-@@ -94,6 +94,12 @@ AARCH64_CORE("neoverse-n1", neoversen1,cortexa57, 8_2A,  AARCH64_FL_FOR_ARCH8_2
+@@ -94,6 +94,15 @@ AARCH64_CORE("neoverse-n1", neoversen1,cortexa57, 8_2A,  AARCH64_FL_FOR_ARCH8_2
  /* Qualcomm ('Q') cores. */
  AARCH64_CORE("saphira",     saphira,    falkor,    8_3A,  AARCH64_FL_FOR_ARCH8_3 | AARCH64_FL_CRYPTO | AARCH64_FL_RCPC, saphira,   0x51, 0xC01, -1)
  
 +/* ARMv8.4-A Architecture Processors.  */
 +
 +/* ARM ('A') cores. */
-+AARCH64_CORE("zeus", zeus, cortexa57, 8_4A,  AARCH64_FL_FOR_ARCH8_4 | AARCH64_FL_F16 | AARCH64_FL_RCPC | AARCH64_FL_SVE, cortexa72, 0x41, 0xd40, -1)
-+AARCH64_CORE("neoverse-v1", neoversev1, cortexa57, 8_4A,  AARCH64_FL_FOR_ARCH8_4 | AARCH64_FL_F16 | AARCH64_FL_RCPC | AARCH64_FL_SVE, cortexa72, 0x41, 0xd40, -1)
++AARCH64_CORE("zeus", zeus, cortexa57, 8_4A,  AARCH64_FL_FOR_ARCH8_4 | AARCH64_FL_F16 | AARCH64_FL_RCPC | AARCH64_FL_SVE | AARCH64_FL_RNG, cortexa72, 0x41, 0xd40, -1)
++AARCH64_CORE("neoverse-v1", neoversev1, cortexa57, 8_4A,  AARCH64_FL_FOR_ARCH8_4 | AARCH64_FL_F16 | AARCH64_FL_RCPC | AARCH64_FL_SVE | AARCH64_FL_RNG, cortexa72, 0x41, 0xd40, -1)
++
++/* Armv8.5-A Architecture Processors.  */
++AARCH64_CORE("neoverse-n2", neoversen2, cortexa57, 8_4A,  AARCH64_FL_FOR_ARCH8_4 | AARCH64_FL_F16 | AARCH64_FL_SVE | AARCH64_FL_RNG, cortexa72, 0x41, 0xd49, -1)
 +
  /* ARMv8-A big.LITTLE implementations.  */
  
@@ -8759,7 +8787,7 @@ index 1154fc3d58d..8fe7ba9e258 100644
    "bcax\\t%0.16b, %1.16b, %2.16b, %3.16b"
    [(set_attr "type" "crypto_sha3")]
 diff --git a/gcc/config/aarch64/aarch64-tune.md b/gcc/config/aarch64/aarch64-tune.md
-index f08b7e44b27..e8894ee4a9d 100644
+index f08b7e44b27..2d7c9aa4740 100644
 --- a/gcc/config/aarch64/aarch64-tune.md
 +++ b/gcc/config/aarch64/aarch64-tune.md
 @@ -1,5 +1,5 @@
@@ -8767,7 +8795,7 @@ index f08b7e44b27..e8894ee4a9d 100644
  ;; Generated automatically by gentune.sh from aarch64-cores.def
  (define_attr "tune"
 -	"cortexa35,cortexa53,cortexa57,cortexa72,cortexa73,thunderx,thunderxt88p1,thunderxt88,thunderxt81,thunderxt83,xgene1,falkor,qdf24xx,exynosm1,thunderx2t99p1,vulcan,thunderx2t99,cortexa55,cortexa75,cortexa76,ares,neoversen1,saphira,cortexa57cortexa53,cortexa72cortexa53,cortexa73cortexa35,cortexa73cortexa53,cortexa75cortexa55"
-+	"cortexa35,cortexa53,cortexa57,cortexa72,cortexa73,thunderx,thunderxt88p1,thunderxt88,thunderxt81,thunderxt83,xgene1,falkor,qdf24xx,exynosm1,thunderx2t99p1,vulcan,thunderx2t99,cortexa55,cortexa75,cortexa76,ares,neoversen1,saphira,zeus,neoversev1,cortexa57cortexa53,cortexa72cortexa53,cortexa73cortexa35,cortexa73cortexa53,cortexa75cortexa55"
++	"cortexa35,cortexa53,cortexa57,cortexa72,cortexa73,thunderx,thunderxt88p1,thunderxt88,thunderxt81,thunderxt83,xgene1,falkor,qdf24xx,exynosm1,thunderx2t99p1,vulcan,thunderx2t99,cortexa55,cortexa75,cortexa76,ares,neoversen1,saphira,zeus,neoversev1,neoversen2,cortexa57cortexa53,cortexa72cortexa53,cortexa73cortexa35,cortexa73cortexa53,cortexa75cortexa55"
  	(const (symbol_ref "((enum attr_tune) aarch64_tune)")))
 diff --git a/gcc/config/aarch64/aarch64.c b/gcc/config/aarch64/aarch64.c
 index 20761578fb6..e20a4ccc6dc 100644
@@ -23426,7 +23454,7 @@ index 365e794316a..006669718fa 100644
  OB_DEF     (s390_vec_extend_s64,        s390_vec_extend_s64_s8,s390_vec_extend_s64_s32,B_VX,        BT_FN_OV4SI_OV4SI)
  OB_DEF_VAR (s390_vec_extend_s64_s8,     s390_vsegb,         0,                  0,                  BT_OV_V2DI_V16QI)
 diff --git a/gcc/config/s390/s390.c b/gcc/config/s390/s390.c
-index 9e7fd2b04dd..9057154be07 100644
+index 9e7fd2b04dd..20424537558 100644
 --- a/gcc/config/s390/s390.c
 +++ b/gcc/config/s390/s390.c
 @@ -7697,6 +7697,8 @@ print_operand_address (FILE *file, rtx addr)
@@ -23454,6 +23482,37 @@ index 9e7fd2b04dd..9057154be07 100644
      case 'C':
        fprintf (file, s390_branch_condition_mnemonic (x, FALSE));
        return;
+@@ -16214,12 +16225,13 @@ s390_atomic_assign_expand_fenv (tree *hold, tree *clear, tree *update)
+ 
+      fenv_var = __builtin_s390_efpc ();
+      __builtin_s390_sfpc (fenv_var & mask) */
+-  tree old_fpc = build2 (MODIFY_EXPR, unsigned_type_node, fenv_var, call_efpc);
+-  tree new_fpc =
+-    build2 (BIT_AND_EXPR, unsigned_type_node, fenv_var,
+-	    build_int_cst (unsigned_type_node,
+-			   ~(FPC_DXC_MASK | FPC_FLAGS_MASK |
+-			     FPC_EXCEPTION_MASK)));
++  tree old_fpc = build4 (TARGET_EXPR, unsigned_type_node, fenv_var, call_efpc,
++			 NULL_TREE, NULL_TREE);
++  tree new_fpc
++    = build2 (BIT_AND_EXPR, unsigned_type_node, fenv_var,
++	      build_int_cst (unsigned_type_node,
++			     ~(FPC_DXC_MASK | FPC_FLAGS_MASK
++			       | FPC_EXCEPTION_MASK)));
+   tree set_new_fpc = build_call_expr (sfpc, 1, new_fpc);
+   *hold = build2 (COMPOUND_EXPR, void_type_node, old_fpc, set_new_fpc);
+ 
+@@ -16238,8 +16250,8 @@ s390_atomic_assign_expand_fenv (tree *hold, tree *clear, tree *update)
+   __atomic_feraiseexcept ((old_fpc & FPC_FLAGS_MASK) >> FPC_FLAGS_SHIFT);  */
+ 
+   old_fpc = create_tmp_var_raw (unsigned_type_node);
+-  tree store_old_fpc = build2 (MODIFY_EXPR, void_type_node,
+-			       old_fpc, call_efpc);
++  tree store_old_fpc = build4 (TARGET_EXPR, void_type_node, old_fpc, call_efpc,
++			       NULL_TREE, NULL_TREE);
+ 
+   set_new_fpc = build_call_expr (sfpc, 1, fenv_var);
+ 
 diff --git a/gcc/config/s390/s390.h b/gcc/config/s390/s390.h
 index 71a12b8c92e..c5307755aa1 100644
 --- a/gcc/config/s390/s390.h
@@ -24550,7 +24609,7 @@ index 2ab45763a6b..08cc1fdddfc 100644
  The @code{scalar_insert_exp}
  functions require a 64-bit environment supporting ISA 3.0 or later.
 diff --git a/gcc/doc/invoke.texi b/gcc/doc/invoke.texi
-index f3d7c5720b7..6b40362e412 100644
+index f3d7c5720b7..b91366daafd 100644
 --- a/gcc/doc/invoke.texi
 +++ b/gcc/doc/invoke.texi
 @@ -604,7 +604,8 @@ Objective-C and Objective-C++ Dialects}.
@@ -24607,17 +24666,19 @@ index f3d7c5720b7..6b40362e412 100644
  @item -march=@var{name}
  @opindex march
  Specify the name of the target architecture and, optionally, one or
-@@ -14747,8 +14771,8 @@ Specify the name of the target processor for which GCC should tune the
+@@ -14747,9 +14771,9 @@ Specify the name of the target processor for which GCC should tune the
  performance of the code.  Permissible values for this option are:
  @samp{generic}, @samp{cortex-a35}, @samp{cortex-a53}, @samp{cortex-a55},
  @samp{cortex-a57}, @samp{cortex-a72}, @samp{cortex-a73}, @samp{cortex-a75},
 -@samp{cortex-a76}, @samp{ares}, @samp{neoverse-n1}
 -@samp{exynos-m1}, @samp{falkor}, @samp{qdf24xx}, @samp{saphira},
-+@samp{cortex-a76}, @samp{ares}, @samp{neoverse-n1}, @samp{neoverse-v1},
-+@samp{zeus}, @samp{exynos-m1}, @samp{falkor}, @samp{qdf24xx}, @samp{saphira},
- @samp{xgene1}, @samp{vulcan}, @samp{thunderx},
+-@samp{xgene1}, @samp{vulcan}, @samp{thunderx},
++@samp{cortex-a76}, @samp{ares}, @samp{neoverse-n1}, @samp{neoverse-n2},
++@samp{neoverse-v1}, @samp{zeus}, @samp{exynos-m1}, @samp{falkor},
++@samp{qdf24xx}, @samp{saphira}, @samp{xgene1}, @samp{vulcan}, @samp{thunderx},
  @samp{thunderxt88}, @samp{thunderxt88p1}, @samp{thunderxt81},
  @samp{thunderxt83}, @samp{thunderx2t99}, @samp{cortex-a57.cortex-a53},
+ @samp{cortex-a72.cortex-a53}, @samp{cortex-a73.cortex-a35},
 @@ -16310,8 +16334,8 @@ Permissible names are: @samp{arm2}, @samp{arm250},
  @samp{cortex-a9}, @samp{cortex-a12}, @samp{cortex-a15}, @samp{cortex-a17},
  @samp{cortex-a32}, @samp{cortex-a35}, @samp{cortex-a53}, @samp{cortex-a55},
@@ -26519,10 +26580,21 @@ index d06e88a8135..25377232248 100644
  
    if (warn_packed && TREE_CODE (rli->t) == RECORD_TYPE
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index ab652ddc144..0a4cf7c7f4d 100644
+index ab652ddc144..e6a2cc50f8c 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,1118 @@
+@@ -1,3 +1,1129 @@
++2020-09-30  H.J. Lu  <hjl.tools@gmail.com>
++
++	Backported from master:
++	2020-09-30  H.J. Lu  <hjl.tools@gmail.com>
++
++	PR target/97184
++	* gcc.target/i386/movdir64b.c: New test.
++	* gcc.target/i386/movdiri32.c: Likewise.
++	* gcc.target/i386/movdiri64.c: Likewise.
++	* lib/target-supports.exp (check_effective_target_movdir): New.
++
 +2020-09-28  Christophe Lyon  <christophe.lyon@linaro.org>
 +
 +	Backported from master:
