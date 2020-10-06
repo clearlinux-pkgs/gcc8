@@ -1,9 +1,10 @@
-Alex Coplan (5):
+Alex Coplan (6):
       aarch64: PR target/94591: Don't generate invalid REV64 insns
       arm: Don't generate invalid LDRD insns
       aarch64: Add support for Neoverse V1 CPU
       arm: Add support for Neoverse V1 CPU
       aarch64: Add support for Neoverse N2 CPU
+      arm: Add support for Neoverse N2 CPU
 
 Alexandre Oliva (1):
       accept <case> and [cond] in ChangeLog
@@ -67,7 +68,12 @@ Fritz Reese (2):
       Backport form master: Fix fortran/85982 ICE in resolve_component.
       Indicate backport in changelogs from last commit.
 
-GCC Administrator (210):
+GCC Administrator (215):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -415,7 +421,7 @@ Jonathan Wakely (17):
 Kewen Lin (1):
       testsuite: Add -fno-common to pr82374.c [PR94077]
 
-Kyrylo Tkachov (14):
+Kyrylo Tkachov (16):
       [AArch64] Use __getauxval instead of getauxval in LSE detection code in libgcc
       aarch64: Add initial support for -mcpu=zeus
       Add support for __jcvt intrinsic
@@ -430,6 +436,8 @@ Kyrylo Tkachov (14):
       AArch64: Implement missing p128<->f64 reinterpret intrinsics
       AArch64: Add Linux cpuinfo string for rng feature
       AArch64: Add rng feature to Neoverse V1
+      AArch64: Add prefer_advsimd_autovec internal tune_flag
+      AArch64: Add Neoverse V1 tuning struct
 
 Marek Polacek (1):
       c++: Bogus error with alignof [PR90736]
@@ -5359,10 +5367,53 @@ index a2f28f43be3..6da4de57dc6 100644
 -8.4.0
 +8.4.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 142499c563c..a7ece67f7e0 100644
+index 142499c563c..213c6a53cc9 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,1833 @@
+@@ -1,3 +1,1876 @@
++2020-10-02  Alex Coplan  <alex.coplan@arm.com>
++
++	* config/arm/arm-cpus.in (neoverse-n2): New.
++	* config/arm/arm-tables.opt: Regenerate.
++	* config/arm/arm-tune.md: Regenerate.
++	* config/arm/driver-arm.c (arm_cpu_table): Add Neoverse N2.
++	* doc/invoke.texi: Document support for Neoverse N2.
++
++2020-10-02  Kyrylo Tkachov  <kyrylo.tkachov@arm.com>
++
++	* config/aarch64/aarch64.c (neoversev1_tunings): Define.
++	* config/aarch64/aarch64-cores.def (zeus): Use it.
++	(neoverse-v1): Likewise.
++
++2020-10-01  Kyrylo Tkachov  <kyrylo.tkachov@arm.com>
++
++	* config/aarch64/aarch64-tuning-flags.def
++	(PREFER_ADVSIMD_AUTOVEC): Define.
++	* config/aarch64/aarch64.c (aarch64_preferred_simd_mode): Use
++	it.
++	(aarch64_autovectorize_vector_sizes): Likewise.
++
++2020-10-01  Kyrylo Tkachov  <kyrylo.tkachov@arm.com>
++
++	* config/aarch64/aarch64-cores.def (zeus): Add AARCH64_FL_RNG to
++	features.
++	(neoverse-v1): Likewise.
++
++2020-10-01  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2020-10-01  Jakub Jelinek  <jakub@redhat.com>
++
++	* config/s390/s390.c (s390_atomic_assign_expand_fenv): Use
++	TARGET_EXPR instead of MODIFY_EXPR for the first assignments to
++	fenv_var and old_fpc.  Formatting fixes.
++
++2020-10-01  Alex Coplan  <alex.coplan@arm.com>
++
++	* config/aarch64/aarch64-cores.def: Add Neoverse N2.
++	* config/aarch64/aarch64-tune.md: Regenerate.
++	* doc/invoke.texi: Document AArch64 support for Neoverse N2.
++
 +2020-09-30  Kyrylo Tkachov  <kyrylo.tkachov@arm.com>
 +
 +	Backported from master:
@@ -8243,7 +8294,7 @@ index 108c0120394..fbcf1d95338 100644
       target between implementations that do or do not support ARMv8.2-A
       16-bit floating-point extensions.  */
 diff --git a/gcc/config/aarch64/aarch64-cores.def b/gcc/config/aarch64/aarch64-cores.def
-index f48b7c22b2d..6a766bfd7cd 100644
+index f48b7c22b2d..29727fabc2a 100644
 --- a/gcc/config/aarch64/aarch64-cores.def
 +++ b/gcc/config/aarch64/aarch64-cores.def
 @@ -94,6 +94,15 @@ AARCH64_CORE("neoverse-n1", neoversen1,cortexa57, 8_2A,  AARCH64_FL_FOR_ARCH8_2
@@ -8253,8 +8304,8 @@ index f48b7c22b2d..6a766bfd7cd 100644
 +/* ARMv8.4-A Architecture Processors.  */
 +
 +/* ARM ('A') cores. */
-+AARCH64_CORE("zeus", zeus, cortexa57, 8_4A,  AARCH64_FL_FOR_ARCH8_4 | AARCH64_FL_F16 | AARCH64_FL_RCPC | AARCH64_FL_SVE | AARCH64_FL_RNG, cortexa72, 0x41, 0xd40, -1)
-+AARCH64_CORE("neoverse-v1", neoversev1, cortexa57, 8_4A,  AARCH64_FL_FOR_ARCH8_4 | AARCH64_FL_F16 | AARCH64_FL_RCPC | AARCH64_FL_SVE | AARCH64_FL_RNG, cortexa72, 0x41, 0xd40, -1)
++AARCH64_CORE("zeus", zeus, cortexa57, 8_4A,  AARCH64_FL_FOR_ARCH8_4 | AARCH64_FL_F16 | AARCH64_FL_RCPC | AARCH64_FL_SVE | AARCH64_FL_RNG, neoversev1, 0x41, 0xd40, -1)
++AARCH64_CORE("neoverse-v1", neoversev1, cortexa57, 8_4A,  AARCH64_FL_FOR_ARCH8_4 | AARCH64_FL_F16 | AARCH64_FL_RCPC | AARCH64_FL_SVE | AARCH64_FL_RNG, neoversev1, 0x41, 0xd40, -1)
 +
 +/* Armv8.5-A Architecture Processors.  */
 +AARCH64_CORE("neoverse-n2", neoversen2, cortexa57, 8_4A,  AARCH64_FL_FOR_ARCH8_4 | AARCH64_FL_F16 | AARCH64_FL_SVE | AARCH64_FL_RNG, cortexa72, 0x41, 0xd49, -1)
@@ -8797,11 +8848,56 @@ index f08b7e44b27..2d7c9aa4740 100644
 -	"cortexa35,cortexa53,cortexa57,cortexa72,cortexa73,thunderx,thunderxt88p1,thunderxt88,thunderxt81,thunderxt83,xgene1,falkor,qdf24xx,exynosm1,thunderx2t99p1,vulcan,thunderx2t99,cortexa55,cortexa75,cortexa76,ares,neoversen1,saphira,cortexa57cortexa53,cortexa72cortexa53,cortexa73cortexa35,cortexa73cortexa53,cortexa75cortexa55"
 +	"cortexa35,cortexa53,cortexa57,cortexa72,cortexa73,thunderx,thunderxt88p1,thunderxt88,thunderxt81,thunderxt83,xgene1,falkor,qdf24xx,exynosm1,thunderx2t99p1,vulcan,thunderx2t99,cortexa55,cortexa75,cortexa76,ares,neoversen1,saphira,zeus,neoversev1,neoversen2,cortexa57cortexa53,cortexa72cortexa53,cortexa73cortexa35,cortexa73cortexa53,cortexa75cortexa55"
  	(const (symbol_ref "((enum attr_tune) aarch64_tune)")))
+diff --git a/gcc/config/aarch64/aarch64-tuning-flags.def b/gcc/config/aarch64/aarch64-tuning-flags.def
+index ea9ead234cb..0f242630f46 100644
+--- a/gcc/config/aarch64/aarch64-tuning-flags.def
++++ b/gcc/config/aarch64/aarch64-tuning-flags.def
+@@ -41,4 +41,7 @@ AARCH64_EXTRA_TUNING_OPTION ("slow_unaligned_ldpw", SLOW_UNALIGNED_LDPW)
+    are not considered cheap.  */
+ AARCH64_EXTRA_TUNING_OPTION ("cheap_shift_extend", CHEAP_SHIFT_EXTEND)
+ 
++/* Prefer Advanced SIMD over SVE for auto-vectorization.  */
++AARCH64_EXTRA_TUNING_OPTION ("prefer_advsimd_autovec", PREFER_ADVSIMD_AUTOVEC)
++
+ #undef AARCH64_EXTRA_TUNING_OPTION
 diff --git a/gcc/config/aarch64/aarch64.c b/gcc/config/aarch64/aarch64.c
-index 20761578fb6..e20a4ccc6dc 100644
+index 20761578fb6..3d218b6b951 100644
 --- a/gcc/config/aarch64/aarch64.c
 +++ b/gcc/config/aarch64/aarch64.c
-@@ -1369,10 +1369,14 @@ aarch64_hard_regno_mode_ok (unsigned regno, machine_mode mode)
+@@ -760,6 +760,32 @@ static const struct tune_params cortexa72_tunings =
+   &generic_prefetch_tune
+ };
+ 
++static const struct tune_params neoversev1_tunings =
++{
++  &cortexa57_extra_costs,
++  &generic_addrcost_table,
++  &cortexa57_regmove_cost,
++  &cortexa57_vector_cost,
++  &generic_branch_cost,
++  &generic_approx_modes,
++  4, /* memmov_cost  */
++  3, /* issue_rate  */
++  (AARCH64_FUSE_AES_AESMC | AARCH64_FUSE_MOV_MOVK | AARCH64_FUSE_ADRP_ADD
++   | AARCH64_FUSE_MOVK_MOVK), /* fusible_ops  */
++  16,	/* function_align.  */
++  4,	/* jump_align.  */
++  8,	/* loop_align.  */
++  2,	/* int_reassoc_width.  */
++  4,	/* fp_reassoc_width.  */
++  1,	/* vec_reassoc_width.  */
++  2,	/* min_div_recip_mul_sf.  */
++  2,	/* min_div_recip_mul_df.  */
++  0,	/* max_case_values.  */
++  tune_params::AUTOPREFETCHER_WEAK,	/* autoprefetcher_model.  */
++  (AARCH64_EXTRA_TUNE_PREFER_ADVSIMD_AUTOVEC),	/* tune_flags.  */
++  &generic_prefetch_tune
++};
++
+ static const struct tune_params cortexa73_tunings =
+ {
+   &cortexa57_extra_costs,
+@@ -1369,10 +1395,14 @@ aarch64_hard_regno_mode_ok (unsigned regno, machine_mode mode)
    if (regno == FRAME_POINTER_REGNUM || regno == ARG_POINTER_REGNUM)
      return mode == Pmode;
  
@@ -8820,7 +8916,7 @@ index 20761578fb6..e20a4ccc6dc 100644
      {
        if (vec_flags & VEC_STRUCT)
  	return end_hard_regno (mode, regno) - 1 <= V31_REGNUM;
-@@ -1517,13 +1521,69 @@ emit_set_insn (rtx x, rtx y)
+@@ -1517,13 +1547,69 @@ emit_set_insn (rtx x, rtx y)
  rtx
  aarch64_gen_compare_reg (RTX_CODE code, rtx x, rtx y)
  {
@@ -8833,11 +8929,11 @@ index 20761578fb6..e20a4ccc6dc 100644
 +  if (cmp_mode == TImode)
 +    {
 +      gcc_assert (code == NE);
-+
-+      cc_mode = CCmode;
-+      cc_reg = gen_rtx_REG (cc_mode, CC_REGNUM);
  
 -  emit_set_insn (cc_reg, gen_rtx_COMPARE (mode, x, y));
++      cc_mode = CCmode;
++      cc_reg = gen_rtx_REG (cc_mode, CC_REGNUM);
++
 +      rtx x_lo = operand_subword (x, 0, 0, TImode);
 +      rtx y_lo = operand_subword (y, 0, 0, TImode);
 +      emit_set_insn (cc_reg, gen_rtx_COMPARE (cc_mode, x_lo, y_lo));
@@ -8893,7 +8989,7 @@ index 20761578fb6..e20a4ccc6dc 100644
  /* Build the SYMBOL_REF for __tls_get_addr.  */
  
  static GTY(()) rtx tls_get_addr_libfunc;
-@@ -2481,7 +2541,7 @@ aarch64_add_offset_1 (scalar_int_mode mode, rtx dest,
+@@ -2481,7 +2567,7 @@ aarch64_add_offset_1 (scalar_int_mode mode, rtx dest,
    gcc_assert (emit_move_imm || temp1 != NULL_RTX);
    gcc_assert (temp1 == NULL_RTX || !reg_overlap_mentioned_p (temp1, src));
  
@@ -8902,7 +8998,7 @@ index 20761578fb6..e20a4ccc6dc 100644
    rtx_insn *insn;
  
    if (!moffset)
-@@ -2525,7 +2585,8 @@ aarch64_add_offset_1 (scalar_int_mode mode, rtx dest,
+@@ -2525,7 +2611,8 @@ aarch64_add_offset_1 (scalar_int_mode mode, rtx dest,
    if (emit_move_imm)
      {
        gcc_assert (temp1 != NULL_RTX || can_create_pseudo_p ());
@@ -8912,7 +9008,7 @@ index 20761578fb6..e20a4ccc6dc 100644
      }
    insn = emit_insn (offset < 0
  		    ? gen_sub3_insn (dest, src, temp1)
-@@ -6600,7 +6661,7 @@ sizetochar (int size)
+@@ -6600,7 +6687,7 @@ sizetochar (int size)
       'S/T/U/V':		Print a FP/SIMD register name for a register list.
  			The register printed is the FP/SIMD register name
  			of X + 0/1/2/3 for S/T/U/V.
@@ -8921,7 +9017,7 @@ index 20761578fb6..e20a4ccc6dc 100644
       'X':		Print bottom 16 bits of integer constant in hex.
       'w/x':		Print a general register name or the zero register
  			(32-bit or 64-bit).
-@@ -6786,12 +6847,13 @@ aarch64_print_operand (FILE *f, rtx x, int code)
+@@ -6786,12 +6873,13 @@ aarch64_print_operand (FILE *f, rtx x, int code)
        break;
  
      case 'R':
@@ -8941,7 +9037,7 @@ index 20761578fb6..e20a4ccc6dc 100644
        break;
  
      case 'X':
-@@ -11330,6 +11392,8 @@ static const struct aarch64_attribute_info aarch64_attributes[] =
+@@ -11330,6 +11418,8 @@ static const struct aarch64_attribute_info aarch64_attributes[] =
       OPT_mtune_ },
    { "sign-return-address", aarch64_attr_enum, false, NULL,
       OPT_msign_return_address_ },
@@ -8950,7 +9046,34 @@ index 20761578fb6..e20a4ccc6dc 100644
    { NULL, aarch64_attr_custom, false, NULL, OPT____ }
  };
  
-@@ -14117,40 +14181,54 @@ static void
+@@ -12906,7 +12996,12 @@ aarch64_simd_container_mode (scalar_mode mode, poly_int64 width)
+ static machine_mode
+ aarch64_preferred_simd_mode (scalar_mode mode)
+ {
+-  poly_int64 bits = TARGET_SVE ? BITS_PER_SVE_VECTOR : 128;
++  /* If current tuning prefers Advanced SIMD, bypass SVE.  */
++  bool use_sve
++    = TARGET_SVE
++      && !(aarch64_tune_params.extra_tuning_flags
++	   & AARCH64_EXTRA_TUNE_PREFER_ADVSIMD_AUTOVEC);
++  poly_int64 bits = use_sve ? BITS_PER_SVE_VECTOR : 128;
+   return aarch64_simd_container_mode (mode, bits);
+ }
+ 
+@@ -12915,7 +13010,11 @@ aarch64_preferred_simd_mode (scalar_mode mode)
+ static void
+ aarch64_autovectorize_vector_sizes (vector_sizes *sizes)
+ {
+-  if (TARGET_SVE)
++  bool use_sve
++    = TARGET_SVE
++      && !(aarch64_tune_params.extra_tuning_flags
++	   & AARCH64_EXTRA_TUNE_PREFER_ADVSIMD_AUTOVEC);
++  if (use_sve)
+     sizes->safe_push (BYTES_PER_SVE_VECTOR);
+   sizes->safe_push (16);
+   sizes->safe_push (8);
+@@ -14117,40 +14216,54 @@ static void
  aarch64_emit_load_exclusive (machine_mode mode, rtx rval,
  			     rtx mem, rtx model_rtx)
  {
@@ -8971,7 +9094,8 @@ index 20761578fb6..e20a4ccc6dc 100644
 -      gcc_unreachable ();
 -    }
 +      rtx (*gen) (rtx, rtx, rtx);
-+
+ 
+-  emit_insn (gen (rval, mem, model_rtx));
 +      switch (mode)
 +	{
 +	case E_QImode: gen = gen_aarch64_load_exclusiveqi; break;
@@ -8981,8 +9105,7 @@ index 20761578fb6..e20a4ccc6dc 100644
 +	default:
 +	  gcc_unreachable ();
 +	}
- 
--  emit_insn (gen (rval, mem, model_rtx));
++
 +      emit_insn (gen (rval, mem, model_rtx));
 +    }
  }
@@ -9028,7 +9151,7 @@ index 20761578fb6..e20a4ccc6dc 100644
  }
  
  /* Mark the previous jump instruction as unlikely.  */
-@@ -14162,30 +14240,89 @@ aarch64_emit_unlikely_jump (rtx insn)
+@@ -14162,30 +14275,89 @@ aarch64_emit_unlikely_jump (rtx insn)
    add_reg_br_prob_note (jump, profile_probability::very_unlikely ());
  }
  
@@ -9137,7 +9260,7 @@ index 20761578fb6..e20a4ccc6dc 100644
  
    bval = operands[0];
    rval = operands[1];
-@@ -14196,88 +14333,107 @@ aarch64_expand_compare_and_swap (rtx operands[])
+@@ -14196,88 +14368,107 @@ aarch64_expand_compare_and_swap (rtx operands[])
    mod_s = operands[6];
    mod_f = operands[7];
    mode = GET_MODE (mem);
@@ -9306,7 +9429,7 @@ index 20761578fb6..e20a4ccc6dc 100644
  /* Emit a barrier, that is appropriate for memory model MODEL, at the end of a
     sequence implementing an atomic operation.  */
  
-@@ -14295,42 +14451,6 @@ aarch64_emit_post_barrier (enum memmodel model)
+@@ -14295,42 +14486,6 @@ aarch64_emit_post_barrier (enum memmodel model)
      }
  }
  
@@ -9349,7 +9472,7 @@ index 20761578fb6..e20a4ccc6dc 100644
  /* Split a compare and swap pattern.  */
  
  void
-@@ -14339,13 +14459,11 @@ aarch64_split_compare_and_swap (rtx operands[])
+@@ -14339,13 +14494,11 @@ aarch64_split_compare_and_swap (rtx operands[])
    /* Split after prolog/epilog to avoid interactions with shrinkwrapping.  */
    gcc_assert (epilogue_completed);
  
@@ -9364,7 +9487,7 @@ index 20761578fb6..e20a4ccc6dc 100644
  
    rval = operands[0];
    mem = operands[1];
-@@ -14366,7 +14484,7 @@ aarch64_split_compare_and_swap (rtx operands[])
+@@ -14366,7 +14519,7 @@ aarch64_split_compare_and_swap (rtx operands[])
  	CBNZ	scratch, .label1
      .label2:
  	CMP	rval, 0.  */
@@ -9373,7 +9496,7 @@ index 20761578fb6..e20a4ccc6dc 100644
  
    label1 = NULL;
    if (!is_weak)
-@@ -14379,26 +14497,20 @@ aarch64_split_compare_and_swap (rtx operands[])
+@@ -14379,26 +14532,20 @@ aarch64_split_compare_and_swap (rtx operands[])
    /* The initial load can be relaxed for a __sync operation since a final
       barrier will be emitted to stop code hoisting.  */
    if (is_mm_sync (model))
@@ -9407,7 +9530,7 @@ index 20761578fb6..e20a4ccc6dc 100644
  
    aarch64_emit_store_exclusive (mode, scratch, mem, newval, model_rtx);
  
-@@ -14410,273 +14522,21 @@ aarch64_split_compare_and_swap (rtx operands[])
+@@ -14410,273 +14557,21 @@ aarch64_split_compare_and_swap (rtx operands[])
        aarch64_emit_unlikely_jump (gen_rtx_SET (pc_rtx, x));
      }
    else
@@ -9685,7 +9808,7 @@ index 20761578fb6..e20a4ccc6dc 100644
  /* Split an atomic operation.  */
  
  void
-@@ -15435,7 +15295,8 @@ aarch64_evpc_rev_local (struct expand_vec_perm_d *d)
+@@ -15435,7 +15330,8 @@ aarch64_evpc_rev_local (struct expand_vec_perm_d *d)
  
    if (d->vec_flags == VEC_SVE_PRED
        || !d->one_vector_p
@@ -20342,10 +20465,10 @@ index 183a7b907f6..48500bca825 100644
    atomic_feraiseexcept = builtin_decl_implicit (BUILT_IN_ATOMIC_FERAISEEXCEPT);
    update_call = build_call_expr (atomic_feraiseexcept, 1,
 diff --git a/gcc/config/arm/arm-cpus.in b/gcc/config/arm/arm-cpus.in
-index ba194a80229..edfe5b378da 100644
+index ba194a80229..39a9e8b76ba 100644
 --- a/gcc/config/arm/arm-cpus.in
 +++ b/gcc/config/arm/arm-cpus.in
-@@ -1576,6 +1576,18 @@ begin cpu cortex-a75.cortex-a55
+@@ -1576,6 +1576,29 @@ begin cpu cortex-a75.cortex-a55
   costs cortex_a73
  end cpu cortex-a75.cortex-a55
  
@@ -20361,25 +20484,39 @@ index ba194a80229..edfe5b378da 100644
 +end cpu neoverse-v1
 +
 +
++# Armv8.5 A-profile Architecture Processors
++begin cpu neoverse-n2
++  cname neoversen2
++  tune for cortex-a57
++  tune flags LDSCHED
++  architecture armv8.4-a+fp16
++  option crypto add FP_ARMv8 CRYPTO
++  costs cortex_a57
++end cpu neoverse-n2
++
++
  # V8 M-profile implementations.
  begin cpu cortex-m23
   cname cortexm23
 diff --git a/gcc/config/arm/arm-tables.opt b/gcc/config/arm/arm-tables.opt
-index 60e5065b398..36dba62003a 100644
+index 60e5065b398..a0fb8323ee3 100644
 --- a/gcc/config/arm/arm-tables.opt
 +++ b/gcc/config/arm/arm-tables.opt
-@@ -351,6 +351,9 @@ Enum(processor_type) String(cortex-a75) Value( TARGET_CPU_cortexa75)
+@@ -351,6 +351,12 @@ Enum(processor_type) String(cortex-a75) Value( TARGET_CPU_cortexa75)
  EnumValue
  Enum(processor_type) String(cortex-a75.cortex-a55) Value( TARGET_CPU_cortexa75cortexa55)
  
 +EnumValue
 +Enum(processor_type) String(neoverse-v1) Value( TARGET_CPU_neoversev1)
 +
++EnumValue
++Enum(processor_type) String(neoverse-n2) Value( TARGET_CPU_neoversen2)
++
  EnumValue
  Enum(processor_type) String(cortex-m23) Value( TARGET_CPU_cortexm23)
  
 diff --git a/gcc/config/arm/arm-tune.md b/gcc/config/arm/arm-tune.md
-index df43a1ccbb2..c972ce55576 100644
+index df43a1ccbb2..ea3dbcda43f 100644
 --- a/gcc/config/arm/arm-tune.md
 +++ b/gcc/config/arm/arm-tune.md
 @@ -57,6 +57,6 @@
@@ -20388,8 +20525,8 @@ index df43a1ccbb2..c972ce55576 100644
  	cortexa73cortexa53,cortexa55,cortexa75,
 -	cortexa75cortexa55,cortexm23,cortexm33,
 -	cortexr52"
-+	cortexa75cortexa55,neoversev1,cortexm23,
-+	cortexm33,cortexr52"
++	cortexa75cortexa55,neoversev1,neoversen2,
++	cortexm23,cortexm33,cortexr52"
  	(const (symbol_ref "((enum attr_tune) arm_tune)")))
 diff --git a/gcc/config/arm/arm.c b/gcc/config/arm/arm.c
 index b7e734e897d..f990ca11bcb 100644
@@ -20541,10 +20678,18 @@ index f78e1477eab..6d6b37719e0 100644
  
  ;; Subroutine to store a half word from a register into memory.
 diff --git a/gcc/config/arm/driver-arm.c b/gcc/config/arm/driver-arm.c
-index dc2f1de01a8..a53c2272864 100644
+index dc2f1de01a8..45ad92ef0e0 100644
 --- a/gcc/config/arm/driver-arm.c
 +++ b/gcc/config/arm/driver-arm.c
-@@ -97,6 +97,7 @@ host_detect_local_cpu (int argc, const char **argv)
+@@ -56,6 +56,7 @@ static struct vendor_cpu arm_cpu_table[] = {
+     {"0xd09", "armv8-a+crc", "cortex-a73"},
+     {"0xd05", "armv8.2-a+fp16+dotprod", "cortex-a55"},
+     {"0xd0a", "armv8.2-a+fp16+dotprod", "cortex-a75"},
++    {"0xd49", "armv8.4-a+fp16", "neoverse-n2"},
+     {"0xc14", "armv7-r", "cortex-r4"},
+     {"0xc15", "armv7-r", "cortex-r5"},
+     {"0xc17", "armv7-r", "cortex-r7"},
+@@ -97,6 +98,7 @@ host_detect_local_cpu (int argc, const char **argv)
    FILE *f = NULL;
    bool arch;
    const struct vendor_cpu *cpu_table = NULL;
@@ -20552,7 +20697,7 @@ index dc2f1de01a8..a53c2272864 100644
  
    if (argc < 1)
      goto not_found;
-@@ -105,7 +106,12 @@ host_detect_local_cpu (int argc, const char **argv)
+@@ -105,7 +107,12 @@ host_detect_local_cpu (int argc, const char **argv)
    if (!arch && strcmp (argv[0], "cpu") != 0 && strcmp (argv[0], "tune"))
      goto not_found;
  
@@ -24609,7 +24754,7 @@ index 2ab45763a6b..08cc1fdddfc 100644
  The @code{scalar_insert_exp}
  functions require a 64-bit environment supporting ISA 3.0 or later.
 diff --git a/gcc/doc/invoke.texi b/gcc/doc/invoke.texi
-index f3d7c5720b7..b91366daafd 100644
+index f3d7c5720b7..78ca7738df2 100644
 --- a/gcc/doc/invoke.texi
 +++ b/gcc/doc/invoke.texi
 @@ -604,7 +604,8 @@ Objective-C and Objective-C++ Dialects}.
@@ -24685,8 +24830,8 @@ index f3d7c5720b7..b91366daafd 100644
  @samp{cortex-a57}, @samp{cortex-a72}, @samp{cortex-a73}, @samp{cortex-a75},
 -@samp{cortex-r4}, @samp{cortex-r4f}, @samp{cortex-r5}, @samp{cortex-r7},
 -@samp{cortex-r8}, @samp{cortex-r52},
-+@samp{neoverse-v1}, @samp{cortex-r4}, @samp{cortex-r4f}, @samp{cortex-r5},
-+@samp{cortex-r7}, @samp{cortex-r8}, @samp{cortex-r52},
++@samp{neoverse-v1}, @samp{neoverse-n2}, @samp{cortex-r4}, @samp{cortex-r4f},
++@samp{cortex-r5}, @samp{cortex-r7}, @samp{cortex-r8}, @samp{cortex-r52},
  @samp{cortex-m33},
  @samp{cortex-m23},
  @samp{cortex-m7},
