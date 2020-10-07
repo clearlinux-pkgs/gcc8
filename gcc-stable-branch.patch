@@ -1,10 +1,11 @@
-Alex Coplan (6):
+Alex Coplan (7):
       aarch64: PR target/94591: Don't generate invalid REV64 insns
       arm: Don't generate invalid LDRD insns
       aarch64: Add support for Neoverse V1 CPU
       arm: Add support for Neoverse V1 CPU
       aarch64: Add support for Neoverse N2 CPU
       arm: Add support for Neoverse N2 CPU
+      arm: Add missing part number for Neoverse V1
 
 Alexandre Oliva (1):
       accept <case> and [cond] in ChangeLog
@@ -68,7 +69,8 @@ Fritz Reese (2):
       Backport form master: Fix fortran/85982 ICE in resolve_component.
       Indicate backport in changelogs from last commit.
 
-GCC Administrator (215):
+GCC Administrator (216):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -5367,10 +5369,14 @@ index a2f28f43be3..6da4de57dc6 100644
 -8.4.0
 +8.4.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 142499c563c..213c6a53cc9 100644
+index 142499c563c..d0ed9184227 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,1876 @@
+@@ -1,3 +1,1880 @@
++2020-10-06  Alex Coplan  <alex.coplan@arm.com>
++
++	* config/arm/driver-arm.c (arm_cpu_table): Add neoverse-v1.
++
 +2020-10-02  Alex Coplan  <alex.coplan@arm.com>
 +
 +	* config/arm/arm-cpus.in (neoverse-n2): New.
@@ -20678,18 +20684,19 @@ index f78e1477eab..6d6b37719e0 100644
  
  ;; Subroutine to store a half word from a register into memory.
 diff --git a/gcc/config/arm/driver-arm.c b/gcc/config/arm/driver-arm.c
-index dc2f1de01a8..45ad92ef0e0 100644
+index dc2f1de01a8..83522897d06 100644
 --- a/gcc/config/arm/driver-arm.c
 +++ b/gcc/config/arm/driver-arm.c
-@@ -56,6 +56,7 @@ static struct vendor_cpu arm_cpu_table[] = {
+@@ -56,6 +56,8 @@ static struct vendor_cpu arm_cpu_table[] = {
      {"0xd09", "armv8-a+crc", "cortex-a73"},
      {"0xd05", "armv8.2-a+fp16+dotprod", "cortex-a55"},
      {"0xd0a", "armv8.2-a+fp16+dotprod", "cortex-a75"},
++    {"0xd40", "armv8.4-a+fp16", "neoverse-v1"},
 +    {"0xd49", "armv8.4-a+fp16", "neoverse-n2"},
      {"0xc14", "armv7-r", "cortex-r4"},
      {"0xc15", "armv7-r", "cortex-r5"},
      {"0xc17", "armv7-r", "cortex-r7"},
-@@ -97,6 +98,7 @@ host_detect_local_cpu (int argc, const char **argv)
+@@ -97,6 +99,7 @@ host_detect_local_cpu (int argc, const char **argv)
    FILE *f = NULL;
    bool arch;
    const struct vendor_cpu *cpu_table = NULL;
@@ -20697,7 +20704,7 @@ index dc2f1de01a8..45ad92ef0e0 100644
  
    if (argc < 1)
      goto not_found;
-@@ -105,7 +107,12 @@ host_detect_local_cpu (int argc, const char **argv)
+@@ -105,7 +108,12 @@ host_detect_local_cpu (int argc, const char **argv)
    if (!arch && strcmp (argv[0], "cpu") != 0 && strcmp (argv[0], "tune"))
      goto not_found;
  
