@@ -1,3 +1,6 @@
+Alan Modra (1):
+      [RS6000] ICE in decompose, at rtl.h:2282
+
 Alex Coplan (7):
       aarch64: PR target/94591: Don't generate invalid REV64 insns
       arm: Don't generate invalid LDRD insns
@@ -69,7 +72,8 @@ Fritz Reese (2):
       Backport form master: Fix fortran/85982 ICE in resolve_component.
       Indicate backport in changelogs from last commit.
 
-GCC Administrator (216):
+GCC Administrator (217):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -401,7 +405,7 @@ Jason Merrill (8):
 John David Anglin (1):
       Define __BIG_ENDIAN__
 
-Jonathan Wakely (17):
+Jonathan Wakely (18):
       doc: Note that some warnings depend on optimizations (PR 92757)
       libstdc++: Fix std::to_address for debug iterators (PR 93960)
       libstdc++: Document correct feature test macro, __cpp_lib_is_invocable
@@ -419,6 +423,7 @@ Jonathan Wakely (17):
       libstdc++: Enable assertions in constexpr string_view members [PR 71960]
       libstdc++: Fix is_trivially_constructible (PR 94033)
       libstdc++: Use correct argument type for __use_alloc [PR 96803]
+      libstdc++: Fix non-reserved name in header
 
 Kewen Lin (1):
       testsuite: Add -fno-common to pr82374.c [PR94077]
@@ -23235,7 +23240,7 @@ index eb19c75bfa4..c6753fbfa6c 100644
      RS6000_BTI_V4SI, RS6000_BTI_V8HI, RS6000_BTI_V8HI, RS6000_BTI_V4SI },
    { ALTIVEC_BUILTIN_VEC_VMSUMUHM, ALTIVEC_BUILTIN_VMSUMUHM,
 diff --git a/gcc/config/rs6000/rs6000.c b/gcc/config/rs6000/rs6000.c
-index 8cf6bd54b2f..aea362cdf6e 100644
+index 8cf6bd54b2f..891c4c54e5f 100644
 --- a/gcc/config/rs6000/rs6000.c
 +++ b/gcc/config/rs6000/rs6000.c
 @@ -4401,6 +4401,14 @@ rs6000_option_override_internal (bool global_init_p)
@@ -23253,6 +23258,15 @@ index 8cf6bd54b2f..aea362cdf6e 100644
    if (TARGET_DIRECT_MOVE && !TARGET_VSX)
      {
        if (rs6000_isa_flags_explicit & OPTION_MASK_DIRECT_MOVE)
+@@ -8959,7 +8967,7 @@ rs6000_legitimize_address (rtx x, rtx oldx ATTRIBUTE_UNUSED,
+ 	low_int = 0;
+       high_int = INTVAL (XEXP (x, 1)) - low_int;
+       sum = force_operand (gen_rtx_PLUS (Pmode, XEXP (x, 0),
+-					 GEN_INT (high_int)), 0);
++					 gen_int_mode (high_int, Pmode)), 0);
+       return plus_constant (Pmode, sum, low_int);
+     }
+   else if (GET_CODE (x) == PLUS
 @@ -17267,7 +17275,7 @@ rs6000_init_builtins (void)
    V2SF_type_node = build_vector_type (float_type_node, 2);
    V2DI_type_node = rs6000_vector_type (TARGET_POWERPC64 ? "__vector long"
@@ -40041,6 +40055,19 @@ index 11b6056370a..88261de02d6 100644
  
    /**
     * @brief Obtain address referenced by a pointer to an object
+diff --git a/libstdc++-v3/include/bits/random.h b/libstdc++-v3/include/bits/random.h
+index ccd5c834db8..50da41615d5 100644
+--- a/libstdc++-v3/include/bits/random.h
++++ b/libstdc++-v3/include/bits/random.h
+@@ -5968,7 +5968,7 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+     { }
+ 
+     template<typename _IntType>
+-      seed_seq(std::initializer_list<_IntType> il);
++      seed_seq(std::initializer_list<_IntType> __il);
+ 
+     template<typename _InputIterator>
+       seed_seq(_InputIterator __begin, _InputIterator __end);
 diff --git a/libstdc++-v3/include/experimental/bits/fs_path.h b/libstdc++-v3/include/experimental/bits/fs_path.h
 index 705f76331b5..c212670b6ca 100644
 --- a/libstdc++-v3/include/experimental/bits/fs_path.h
@@ -41082,6 +41109,22 @@ index 6d0bec48d44..8f3191c1a71 100644
    std::string buf(st.st_size ? st.st_size + 1 : 128, '\0');
    do
      {
+diff --git a/libstdc++-v3/testsuite/17_intro/names.cc b/libstdc++-v3/testsuite/17_intro/names.cc
+index dad7ba970aa..d758138dfb1 100644
+--- a/libstdc++-v3/testsuite/17_intro/names.cc
++++ b/libstdc++-v3/testsuite/17_intro/names.cc
+@@ -104,6 +104,11 @@
+ #define uses_allocator  (
+ #endif
+ 
++#if __cplusplus < 201402L
++// <complex> defines operator""il
++#define il  (
++#endif
++
+ #if __cplusplus < 201703L
+ // <charconv> defines to_chars_result::ptr and to_chars_result::ec
+ #define ec (
 diff --git a/libstdc++-v3/testsuite/20_util/is_nothrow_constructible/94003.cc b/libstdc++-v3/testsuite/20_util/is_nothrow_constructible/94003.cc
 new file mode 100644
 index 00000000000..392a0878ba5
