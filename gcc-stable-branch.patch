@@ -72,7 +72,8 @@ Fritz Reese (2):
       Backport form master: Fix fortran/85982 ICE in resolve_component.
       Indicate backport in changelogs from last commit.
 
-GCC Administrator (217):
+GCC Administrator (218):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -428,7 +429,7 @@ Jonathan Wakely (18):
 Kewen Lin (1):
       testsuite: Add -fno-common to pr82374.c [PR94077]
 
-Kyrylo Tkachov (16):
+Kyrylo Tkachov (18):
       [AArch64] Use __getauxval instead of getauxval in LSE detection code in libgcc
       aarch64: Add initial support for -mcpu=zeus
       Add support for __jcvt intrinsic
@@ -445,6 +446,8 @@ Kyrylo Tkachov (16):
       AArch64: Add rng feature to Neoverse V1
       AArch64: Add prefer_advsimd_autovec internal tune_flag
       AArch64: Add Neoverse V1 tuning struct
+      PR target/96313 AArch64: vqmovun* return types should be unsigned
+      PR target/97150 AArch64: 2nd parameter of unsigned Neon scalar shift intrinsics should be signed
 
 Marek Polacek (1):
       c++: Bogus error with alignof [PR90736]
@@ -5374,10 +5377,51 @@ index a2f28f43be3..6da4de57dc6 100644
 -8.4.0
 +8.4.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 142499c563c..d0ed9184227 100644
+index 142499c563c..faef3adaada 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,1880 @@
+@@ -1,3 +1,1921 @@
++2020-10-08  Kyrylo Tkachov  <kyrylo.tkachov@arm.com>
++
++	Backported from master:
++	2020-10-08  Kyrylo Tkachov  <kyrylo.tkachov@arm.com>
++
++	PR target/97150
++	* config/aarch64/arm_neon.h (vqrshlb_u8): Make second argument
++	signed.
++	(vqrshlh_u16): Likewise.
++	(vqrshls_u32): Likewise.
++	(vqrshld_u64): Likewise.
++	(vqshlb_u8): Likewise.
++	(vqshlh_u16): Likewise.
++	(vqshls_u32): Likewise.
++	(vqshld_u64): Likewise.
++	(vshld_u64): Likewise.
++
++2020-10-08  Kyrylo Tkachov  <kyrylo.tkachov@arm.com>
++
++	Backported from master:
++	2020-10-08  Kyrylo Tkachov  <kyrylo.tkachov@arm.com>
++
++	PR target/96313
++	* config/aarch64/aarch64-simd-builtins.def (sqmovun): Use UNOPUS
++	qualifiers.
++	* config/aarch64/arm_neon.h (vqmovun_s16): Adjust builtin call.
++	Remove unnecessary result cast.
++	(vqmovun_s32): Likewise.
++	(vqmovun_s64): Likewise.
++	(vqmovunh_s16): Likewise.  Fix return type.
++	(vqmovuns_s32): Likewise.
++	(vqmovund_s64): Likewise.
++
++2020-10-08  Alan Modra  <amodra@gmail.com>
++
++	Backported from master:
++	2020-10-01  Alan Modra  <amodra@gmail.com>
++
++	* config/rs6000/rs6000.c (rs6000_legitimize_address): Use
++	gen_int_mode for high part of address constant.
++
 +2020-10-06  Alex Coplan  <alex.coplan@arm.com>
 +
 +	* config/arm/driver-arm.c (arm_cpu_table): Add neoverse-v1.
@@ -8370,9 +8414,18 @@ index cda2895d28e..0f1dc75a27f 100644
 +
  #endif /* GCC_AARCH64_PROTOS_H */
 diff --git a/gcc/config/aarch64/aarch64-simd-builtins.def b/gcc/config/aarch64/aarch64-simd-builtins.def
-index b383f2485e5..8acfc083ce1 100644
+index b383f2485e5..81382cc095f 100644
 --- a/gcc/config/aarch64/aarch64-simd-builtins.def
 +++ b/gcc/config/aarch64/aarch64-simd-builtins.def
+@@ -155,7 +155,7 @@
+   BUILTIN_VQN (TERNOP, raddhn2, 0)
+   BUILTIN_VQN (TERNOP, rsubhn2, 0)
+ 
+-  BUILTIN_VSQN_HSDI (UNOP, sqmovun, 0)
++  BUILTIN_VSQN_HSDI (UNOPUS, sqmovun, 0)
+   /* Implemented by aarch64_<sur>qmovn<mode>.  */
+   BUILTIN_VSQN_HSDI (UNOP, sqmovn, 0)
+   BUILTIN_VSQN_HSDI (UNOP, uqmovn, 0)
 @@ -217,6 +217,25 @@
    BUILTIN_VB (QUADOP_LANE, sdot_laneq, 0)
    BUILTIN_VB (QUADOPU_LANE, udot_laneq, 0)
@@ -9989,7 +10042,7 @@ index 8504c3f1d76..8d16c8763ff 100644
  }
  #endif
 diff --git a/gcc/config/aarch64/arm_neon.h b/gcc/config/aarch64/arm_neon.h
-index 115cedcaa5b..4b50503c446 100644
+index 115cedcaa5b..2741b67b8d4 100644
 --- a/gcc/config/aarch64/arm_neon.h
 +++ b/gcc/config/aarch64/arm_neon.h
 @@ -6055,6 +6055,20 @@ vreinterpretq_u32_p128 (poly128_t __a)
@@ -10872,6 +10925,124 @@ index 115cedcaa5b..4b50503c446 100644
  __extension__ extern __inline float32x4_t
  __attribute__ ((__always_inline__, __gnu_inline__, __artificial__))
  vnegq_f32 (float32x4_t __a)
+@@ -23412,42 +24177,42 @@ __extension__ extern __inline uint8x8_t
+ __attribute__ ((__always_inline__, __gnu_inline__, __artificial__))
+ vqmovun_s16 (int16x8_t __a)
+ {
+-  return (uint8x8_t) __builtin_aarch64_sqmovunv8hi (__a);
++  return __builtin_aarch64_sqmovunv8hi_us (__a);
+ }
+ 
+ __extension__ extern __inline uint16x4_t
+ __attribute__ ((__always_inline__, __gnu_inline__, __artificial__))
+ vqmovun_s32 (int32x4_t __a)
+ {
+-  return (uint16x4_t) __builtin_aarch64_sqmovunv4si (__a);
++  return __builtin_aarch64_sqmovunv4si_us (__a);
+ }
+ 
+ __extension__ extern __inline uint32x2_t
+ __attribute__ ((__always_inline__, __gnu_inline__, __artificial__))
+ vqmovun_s64 (int64x2_t __a)
+ {
+-  return (uint32x2_t) __builtin_aarch64_sqmovunv2di (__a);
++  return __builtin_aarch64_sqmovunv2di_us (__a);
+ }
+ 
+-__extension__ extern __inline int8_t
++__extension__ extern __inline uint8_t
+ __attribute__ ((__always_inline__, __gnu_inline__, __artificial__))
+ vqmovunh_s16 (int16_t __a)
+ {
+-  return (int8_t) __builtin_aarch64_sqmovunhi (__a);
++  return __builtin_aarch64_sqmovunhi_us (__a);
+ }
+ 
+-__extension__ extern __inline int16_t
++__extension__ extern __inline uint16_t
+ __attribute__ ((__always_inline__, __gnu_inline__, __artificial__))
+ vqmovuns_s32 (int32_t __a)
+ {
+-  return (int16_t) __builtin_aarch64_sqmovunsi (__a);
++  return __builtin_aarch64_sqmovunsi_us (__a);
+ }
+ 
+-__extension__ extern __inline int32_t
++__extension__ extern __inline uint32_t
+ __attribute__ ((__always_inline__, __gnu_inline__, __artificial__))
+ vqmovund_s64 (int64_t __a)
+ {
+-  return (int32_t) __builtin_aarch64_sqmovundi (__a);
++  return __builtin_aarch64_sqmovundi_us (__a);
+ }
+ 
+ /* vqneg */
+@@ -23703,28 +24468,28 @@ vqrshld_s64 (int64_t __a, int64_t __b)
+ 
+ __extension__ extern __inline uint8_t
+ __attribute__ ((__always_inline__, __gnu_inline__, __artificial__))
+-vqrshlb_u8 (uint8_t __a, uint8_t __b)
++vqrshlb_u8 (uint8_t __a, int8_t __b)
+ {
+   return __builtin_aarch64_uqrshlqi_uus (__a, __b);
+ }
+ 
+ __extension__ extern __inline uint16_t
+ __attribute__ ((__always_inline__, __gnu_inline__, __artificial__))
+-vqrshlh_u16 (uint16_t __a, uint16_t __b)
++vqrshlh_u16 (uint16_t __a, int16_t __b)
+ {
+   return __builtin_aarch64_uqrshlhi_uus (__a, __b);
+ }
+ 
+ __extension__ extern __inline uint32_t
+ __attribute__ ((__always_inline__, __gnu_inline__, __artificial__))
+-vqrshls_u32 (uint32_t __a, uint32_t __b)
++vqrshls_u32 (uint32_t __a, int32_t __b)
+ {
+   return __builtin_aarch64_uqrshlsi_uus (__a, __b);
+ }
+ 
+ __extension__ extern __inline uint64_t
+ __attribute__ ((__always_inline__, __gnu_inline__, __artificial__))
+-vqrshld_u64 (uint64_t __a, uint64_t __b)
++vqrshld_u64 (uint64_t __a, int64_t __b)
+ {
+   return __builtin_aarch64_uqrshldi_uus (__a, __b);
+ }
+@@ -24003,28 +24768,28 @@ vqshld_s64 (int64_t __a, int64_t __b)
+ 
+ __extension__ extern __inline uint8_t
+ __attribute__ ((__always_inline__, __gnu_inline__, __artificial__))
+-vqshlb_u8 (uint8_t __a, uint8_t __b)
++vqshlb_u8 (uint8_t __a, int8_t __b)
+ {
+   return __builtin_aarch64_uqshlqi_uus (__a, __b);
+ }
+ 
+ __extension__ extern __inline uint16_t
+ __attribute__ ((__always_inline__, __gnu_inline__, __artificial__))
+-vqshlh_u16 (uint16_t __a, uint16_t __b)
++vqshlh_u16 (uint16_t __a, int16_t __b)
+ {
+   return __builtin_aarch64_uqshlhi_uus (__a, __b);
+ }
+ 
+ __extension__ extern __inline uint32_t
+ __attribute__ ((__always_inline__, __gnu_inline__, __artificial__))
+-vqshls_u32 (uint32_t __a, uint32_t __b)
++vqshls_u32 (uint32_t __a, int32_t __b)
+ {
+   return __builtin_aarch64_uqshlsi_uus (__a, __b);
+ }
+ 
+ __extension__ extern __inline uint64_t
+ __attribute__ ((__always_inline__, __gnu_inline__, __artificial__))
+-vqshld_u64 (uint64_t __a, uint64_t __b)
++vqshld_u64 (uint64_t __a, int64_t __b)
+ {
+   return __builtin_aarch64_uqshldi_uus (__a, __b);
+ }
 @@ -25453,6 +26218,13 @@ vrndmq_f64 (float64x2_t __a)
  
  /* vrndn  */
@@ -10886,6 +11057,15 @@ index 115cedcaa5b..4b50503c446 100644
  __extension__ extern __inline float32x2_t
  __attribute__ ((__always_inline__, __gnu_inline__, __artificial__))
  vrndn_f32 (float32x2_t __a)
+@@ -26355,7 +27127,7 @@ vshld_s64 (int64_t __a, int64_t __b)
+ 
+ __extension__ extern __inline uint64_t
+ __attribute__ ((__always_inline__, __gnu_inline__, __artificial__))
+-vshld_u64 (uint64_t __a, uint64_t __b)
++vshld_u64 (uint64_t __a, int64_t __b)
+ {
+   return __builtin_aarch64_ushldi_uus (__a, __b);
+ }
 @@ -27497,11 +28269,11 @@ vst1q_lane_u64 (uint64_t *__a, uint64x2_t __b, const int __lane)
    *__a = __aarch64_vget_lane_any (__b, __lane);
  }
@@ -26746,10 +26926,30 @@ index d06e88a8135..25377232248 100644
  
    if (warn_packed && TREE_CODE (rli->t) == RECORD_TYPE
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index ab652ddc144..e6a2cc50f8c 100644
+index ab652ddc144..0d5a5215c8a 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,1129 @@
+@@ -1,3 +1,1149 @@
++2020-10-08  Kyrylo Tkachov  <kyrylo.tkachov@arm.com>
++
++	Backported from master:
++	2020-10-08  Kyrylo Tkachov  <kyrylo.tkachov@arm.com>
++
++	PR target/97150
++	* gcc.target/aarch64/pr97150.c: New test.
++
++2020-10-08  Kyrylo Tkachov  <kyrylo.tkachov@arm.com>
++
++	Backported from master:
++	2020-10-08  Kyrylo Tkachov  <kyrylo.tkachov@arm.com>
++
++	PR target/96313
++	* gcc.target/aarch64/pr96313.c: New test.
++	* gcc.target/aarch64/scalar_intrinsics.c (test_vqmovunh_s16):
++	Adjust return type.
++	(test_vqmovuns_s32): Likewise.
++	(test_vqmovund_s64): Likewise.
++
 +2020-09-30  H.J. Lu  <hjl.tools@gmail.com>
 +
 +	Backported from master:
@@ -32866,6 +33066,20 @@ index 00000000000..a6a0fb1adc8
 +  f0_pac_ret ();
 +  die ();
 +}
+diff --git a/gcc/testsuite/gcc.target/aarch64/pr96313.c b/gcc/testsuite/gcc.target/aarch64/pr96313.c
+new file mode 100644
+index 00000000000..0bf7604092f
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/aarch64/pr96313.c
+@@ -0,0 +1,8 @@
++/* { dg-do compile } */
++
++#include <arm_neon.h>
++
++uint32_t (*fp3)(int64_t) = vqmovund_s64;
++uint8_t (*fp4)(int16_t) = vqmovunh_s16;
++uint16_t (*fp5)(int32_t) = vqmovuns_s32;
++
 diff --git a/gcc/testsuite/gcc.target/aarch64/pr96402.c b/gcc/testsuite/gcc.target/aarch64/pr96402.c
 new file mode 100644
 index 00000000000..fa2dddfac15
@@ -32888,8 +33102,28 @@ index 00000000000..fa2dddfac15
 +    __builtin_abort ();
 +  return 0;
 +}
+diff --git a/gcc/testsuite/gcc.target/aarch64/pr97150.c b/gcc/testsuite/gcc.target/aarch64/pr97150.c
+new file mode 100644
+index 00000000000..7abdd8cf347
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/aarch64/pr97150.c
+@@ -0,0 +1,14 @@
++/* { dg-do compile } */
++
++#include <arm_neon.h>
++
++uint8_t  (*fp0)(uint8_t, int8_t)   = vqshlb_u8;
++uint16_t (*fp1)(uint16_t, int16_t) = vqshlh_u16;
++uint32_t (*fp2)(uint32_t, int32_t) = vqshls_u32;
++uint64_t (*fp3)(uint64_t, int64_t) = vqshld_u64;
++uint8_t  (*fp4)(uint8_t, int8_t)   = vqrshlb_u8;
++uint16_t (*fp5)(uint16_t, int16_t) = vqrshlh_u16;
++uint32_t (*fp6)(uint32_t, int32_t) = vqrshls_u32;
++uint64_t (*fp7)(uint64_t, int64_t) = vqrshld_u64;
++uint64_t (*fp8)(uint64_t, int64_t) = vshld_u64;
++
 diff --git a/gcc/testsuite/gcc.target/aarch64/scalar_intrinsics.c b/gcc/testsuite/gcc.target/aarch64/scalar_intrinsics.c
-index ea29066e369..d943989768d 100644
+index ea29066e369..c2e13b651e9 100644
 --- a/gcc/testsuite/gcc.target/aarch64/scalar_intrinsics.c
 +++ b/gcc/testsuite/gcc.target/aarch64/scalar_intrinsics.c
 @@ -627,6 +627,14 @@ test_vqabss_s32 (int32_t a)
@@ -32907,6 +33141,33 @@ index ea29066e369..d943989768d 100644
  /* { dg-final { scan-assembler-times "\\tsqneg\\tb\[0-9\]+" 1 } } */
  
  int8_t
+@@ -653,7 +661,7 @@ test_vqnegs_s32 (int32_t a)
+ 
+ /* { dg-final { scan-assembler-times "\\tsqxtun\\tb\[0-9\]+" 1 } } */
+ 
+-int8_t
++uint8_t
+ test_vqmovunh_s16 (int16_t a)
+ {
+   return vqmovunh_s16 (a);
+@@ -661,7 +669,7 @@ test_vqmovunh_s16 (int16_t a)
+ 
+ /* { dg-final { scan-assembler-times "\\tsqxtun\\th\[0-9\]+" 1 } } */
+ 
+-int16_t
++uint16_t
+ test_vqmovuns_s32 (int32_t a)
+ {
+   return vqmovuns_s32 (a);
+@@ -669,7 +677,7 @@ test_vqmovuns_s32 (int32_t a)
+ 
+ /* { dg-final { scan-assembler-times "\\tsqxtun\\ts\[0-9\]+" 1 } } */
+ 
+-int32_t
++uint32_t
+ test_vqmovund_s64 (int64_t a)
+ {
+   return vqmovund_s64 (a);
 diff --git a/gcc/testsuite/gcc.target/aarch64/sha3.h b/gcc/testsuite/gcc.target/aarch64/sha3.h
 index 76dd1931dff..c8537c25196 100644
 --- a/gcc/testsuite/gcc.target/aarch64/sha3.h
@@ -39198,10 +39459,19 @@ index d2465c6e13a..d08f9c6548c 100644
       ld uses them to relax its checking of ELF gABI access rules for
       COMDAT sections in objects produced by GCC.  */
 diff --git a/libstdc++-v3/ChangeLog b/libstdc++-v3/ChangeLog
-index 1d6f972584a..69f60a3ba85 100644
+index 1d6f972584a..3f7d2447afa 100644
 --- a/libstdc++-v3/ChangeLog
 +++ b/libstdc++-v3/ChangeLog
-@@ -1,3 +1,139 @@
+@@ -1,3 +1,148 @@
++2020-10-08  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2020-10-07  Jonathan Wakely  <jwakely@redhat.com>
++
++	* include/bits/random.h (seed_seq(initializer_list<T>)): Rename
++	parameter to use reserved name.
++	* testsuite/17_intro/names.cc: Check "il".
++
 +2020-09-22  Jonathan Wakely  <jwakely@redhat.com>
 +
 +	Backported from master:
