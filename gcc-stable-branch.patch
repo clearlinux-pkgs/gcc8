@@ -72,7 +72,11 @@ Fritz Reese (2):
       Backport form master: Fix fortran/85982 ICE in resolve_component.
       Indicate backport in changelogs from last commit.
 
-GCC Administrator (218):
+GCC Administrator (222):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -429,7 +433,7 @@ Jonathan Wakely (18):
 Kewen Lin (1):
       testsuite: Add -fno-common to pr82374.c [PR94077]
 
-Kyrylo Tkachov (18):
+Kyrylo Tkachov (19):
       [AArch64] Use __getauxval instead of getauxval in LSE detection code in libgcc
       aarch64: Add initial support for -mcpu=zeus
       Add support for __jcvt intrinsic
@@ -448,6 +452,7 @@ Kyrylo Tkachov (18):
       AArch64: Add Neoverse V1 tuning struct
       PR target/96313 AArch64: vqmovun* return types should be unsigned
       PR target/97150 AArch64: 2nd parameter of unsigned Neon scalar shift intrinsics should be signed
+      PR target/97349 AArch64: Incorrect types for some Neon vdupq_n_<...> intrinsics
 
 Marek Polacek (1):
       c++: Bogus error with alignof [PR90736]
@@ -10042,7 +10047,7 @@ index 8504c3f1d76..8d16c8763ff 100644
  }
  #endif
 diff --git a/gcc/config/aarch64/arm_neon.h b/gcc/config/aarch64/arm_neon.h
-index 115cedcaa5b..2741b67b8d4 100644
+index 115cedcaa5b..0216e583f0c 100644
 --- a/gcc/config/aarch64/arm_neon.h
 +++ b/gcc/config/aarch64/arm_neon.h
 @@ -6055,6 +6055,20 @@ vreinterpretq_u32_p128 (poly128_t __a)
@@ -10176,6 +10181,67 @@ index 115cedcaa5b..2741b67b8d4 100644
  /* vclz.  */
  
  __extension__ extern __inline int8x8_t
+@@ -15657,7 +15746,7 @@ vdupq_n_f64 (float64_t __a)
+ 
+ __extension__ extern __inline poly8x16_t
+ __attribute__ ((__always_inline__, __gnu_inline__, __artificial__))
+-vdupq_n_p8 (uint32_t __a)
++vdupq_n_p8 (poly8_t __a)
+ {
+   return (poly8x16_t) {__a, __a, __a, __a, __a, __a, __a, __a,
+ 		       __a, __a, __a, __a, __a, __a, __a, __a};
+@@ -15665,21 +15754,21 @@ vdupq_n_p8 (uint32_t __a)
+ 
+ __extension__ extern __inline poly16x8_t
+ __attribute__ ((__always_inline__, __gnu_inline__, __artificial__))
+-vdupq_n_p16 (uint32_t __a)
++vdupq_n_p16 (poly16_t __a)
+ {
+   return (poly16x8_t) {__a, __a, __a, __a, __a, __a, __a, __a};
+ }
+ 
+ __extension__ extern __inline poly64x2_t
+ __attribute__ ((__always_inline__, __gnu_inline__, __artificial__))
+-vdupq_n_p64 (uint64_t __a)
++vdupq_n_p64 (poly64_t __a)
+ {
+   return (poly64x2_t) {__a, __a};
+ }
+ 
+ __extension__ extern __inline int8x16_t
+ __attribute__ ((__always_inline__, __gnu_inline__, __artificial__))
+-vdupq_n_s8 (int32_t __a)
++vdupq_n_s8 (int8_t __a)
+ {
+   return (int8x16_t) {__a, __a, __a, __a, __a, __a, __a, __a,
+ 		      __a, __a, __a, __a, __a, __a, __a, __a};
+@@ -15687,7 +15776,7 @@ vdupq_n_s8 (int32_t __a)
+ 
+ __extension__ extern __inline int16x8_t
+ __attribute__ ((__always_inline__, __gnu_inline__, __artificial__))
+-vdupq_n_s16 (int32_t __a)
++vdupq_n_s16 (int16_t __a)
+ {
+   return (int16x8_t) {__a, __a, __a, __a, __a, __a, __a, __a};
+ }
+@@ -15708,7 +15797,7 @@ vdupq_n_s64 (int64_t __a)
+ 
+ __extension__ extern __inline uint8x16_t
+ __attribute__ ((__always_inline__, __gnu_inline__, __artificial__))
+-vdupq_n_u8 (uint32_t __a)
++vdupq_n_u8 (uint8_t __a)
+ {
+   return (uint8x16_t) {__a, __a, __a, __a, __a, __a, __a, __a,
+ 		       __a, __a, __a, __a, __a, __a, __a, __a};
+@@ -15716,7 +15805,7 @@ vdupq_n_u8 (uint32_t __a)
+ 
+ __extension__ extern __inline uint16x8_t
+ __attribute__ ((__always_inline__, __gnu_inline__, __artificial__))
+-vdupq_n_u16 (uint32_t __a)
++vdupq_n_u16 (uint16_t __a)
+ {
+   return (uint16x8_t) {__a, __a, __a, __a, __a, __a, __a, __a};
+ }
 @@ -17145,6 +17234,374 @@ vld1_u64 (const uint64_t *a)
    return (uint64x1_t) {*a};
  }
@@ -33264,6 +33330,24 @@ index 8915c805c3e..8d8ee77c293 100644
  /* { dg-final { scan-assembler-times "xar\\tv\[0-9\]+\.2d, v\[0-9\]+\.2d, v\[0-9\]+\.2d, 15" 1 } } */
 -/* { dg-final { scan-assembler-times "bcax\\tv\[0-9\]+\.16b, v\[0-9\]+\.16b, v\[0-9\]+\.16b, v\[0-9\]+\.16b" 1 } } */
 +/* { dg-final { scan-assembler-times "bcax\\tv\[0-9\]+\.16b, v\[0-9\]+\.16b, v\[0-9\]+\.16b, v\[0-9\]+\.16b" 8 } } */
+diff --git a/gcc/testsuite/gcc.target/aarch64/simd/pr97349.c b/gcc/testsuite/gcc.target/aarch64/simd/pr97349.c
+new file mode 100644
+index 00000000000..026767a7243
+--- /dev/null
++++ b/gcc/testsuite/gcc.target/aarch64/simd/pr97349.c
+@@ -0,0 +1,12 @@
++/* { dg-do compile } */
++
++#include <arm_neon.h>
++
++poly16x8_t  (*fp0)(poly16_t) = vdupq_n_p16;
++poly64x2_t  (*fp1)(poly64_t) = vdupq_n_p64;
++poly8x16_t  (*fp2)(poly8_t)  = vdupq_n_p8;
++int16x8_t   (*fp3)(int16_t)  = vdupq_n_s16;
++int8x16_t   (*fp4)(int8_t)   = vdupq_n_s8;
++uint16x8_t  (*fp5)(uint16_t) = vdupq_n_u16;
++uint8x16_t  (*fp6)(uint8_t)  = vdupq_n_u8;
++
 diff --git a/gcc/testsuite/gcc.target/aarch64/simd/trn_zip_p64_1.c b/gcc/testsuite/gcc.target/aarch64/simd/trn_zip_p64_1.c
 new file mode 100644
 index 00000000000..a47321db80b
