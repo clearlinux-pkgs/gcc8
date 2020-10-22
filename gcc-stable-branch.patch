@@ -36,10 +36,11 @@ Andre Vieira (21):
       aarch64: Fix for PR target/94814
       aarch64: Force TImode values into even registers
 
-Andreas Krebbel (3):
+Andreas Krebbel (4):
       PR94613: Fix vec_sel builtin for IBM Z
       S/390: Fix PR94666
       S/390: Support vector load/store alignment hints
+      Fix PR97439
 
 Bin Cheng (2):
       Add unsigned type iv_cand for iv_use with non mode-precision type
@@ -72,7 +73,15 @@ Fritz Reese (2):
       Backport form master: Fix fortran/85982 ICE in resolve_component.
       Indicate backport in changelogs from last commit.
 
-GCC Administrator (223):
+GCC Administrator (231):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -24915,7 +24924,7 @@ index 5c064086e90..c099892b2bc 100644
        return build_nop_reinterpret (type, expr);
      }
 diff --git a/gcc/dfp.c b/gcc/dfp.c
-index 230b1b14eaa..26efdc51901 100644
+index 230b1b14eaa..ee47c30b1f5 100644
 --- a/gcc/dfp.c
 +++ b/gcc/dfp.c
 @@ -342,9 +342,13 @@ decimal_to_binary (REAL_VALUE_TYPE *to, const REAL_VALUE_TYPE *from,
@@ -24935,6 +24944,13 @@ index 230b1b14eaa..26efdc51901 100644
    real_from_string3 (to, string, fmt);
  }
  
+@@ -736,4 +740,6 @@ decimal_real_maxval (REAL_VALUE_TYPE *r, int sign, machine_mode mode)
+   decimal_real_from_string (r, max);
+   if (sign)
+     decimal128SetSign ((decimal128 *) r->sig, 1);
++
++  r->sign = sign;
+ }
 diff --git a/gcc/doc/cpp.texi b/gcc/doc/cpp.texi
 index 4297c0ca9ce..6c6ab06b407 100644
 --- a/gcc/doc/cpp.texi
@@ -29765,6 +29781,39 @@ index 00000000000..ea3a132270a
 +  _Decimal32 d = (_Decimal32) __builtin_inff ();
 +  if (!__builtin_isinf ((double) d))
 +    __builtin_abort ();
++  return 0;
++}
+diff --git a/gcc/testsuite/gcc.dg/dfp/pr97439.c b/gcc/testsuite/gcc.dg/dfp/pr97439.c
+new file mode 100644
+index 00000000000..7fcf834043c
+--- /dev/null
++++ b/gcc/testsuite/gcc.dg/dfp/pr97439.c
+@@ -0,0 +1,27 @@
++// { dg-do run }
++// { dg-options "-O1" }
++
++static int
++foo(_Decimal128 x, _Decimal128 y)
++{
++  if (x > y)
++    return 1;
++
++  return 0;
++}
++
++int __attribute__((noinline))
++bar(_Decimal128 x)
++{
++  return foo (x, -1.0DL * __builtin_infd32());
++}
++
++int
++main (void)
++{
++  int res = bar (0.0DL);
++  if (res != 1)
++    __builtin_abort ();
++
 +  return 0;
 +}
 diff --git a/gcc/testsuite/gcc.dg/gomp/pr82374.c b/gcc/testsuite/gcc.dg/gomp/pr82374.c
