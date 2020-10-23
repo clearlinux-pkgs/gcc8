@@ -73,7 +73,8 @@ Fritz Reese (2):
       Backport form master: Fix fortran/85982 ICE in resolve_component.
       Indicate backport in changelogs from last commit.
 
-GCC Administrator (231):
+GCC Administrator (232):
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -5393,10 +5394,19 @@ index a2f28f43be3..6da4de57dc6 100644
 -8.4.0
 +8.4.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 142499c563c..78a2a2c895b 100644
+index 142499c563c..49158b622ba 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,1936 @@
+@@ -1,3 +1,1945 @@
++2020-10-22  Andreas Krebbel  <krebbel@linux.ibm.com>
++
++	Backported from master:
++	2020-10-22  Andreas Krebbel  <krebbel@linux.ibm.com>
++
++	PR rtl-optimization/97439
++	* dfp.c (decimal_real_maxval): Set the sign flag in the
++	generated number.
++
 +2020-10-13  Kyrylo Tkachov  <kyrylo.tkachov@arm.com>
 +
 +	* config/aarch64/aarch64.c (neoversen2_tunings): Define.
@@ -27051,10 +27061,17 @@ index d06e88a8135..25377232248 100644
  
    if (warn_packed && TREE_CODE (rli->t) == RECORD_TYPE
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index ab652ddc144..94527525fe9 100644
+index ab652ddc144..d74fcf166cb 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,1157 @@
+@@ -1,3 +1,1164 @@
++2020-10-22  Andreas Krebbel  <krebbel@linux.ibm.com>
++
++	Backported from master:
++	2020-10-22  Andreas Krebbel  <krebbel@linux.ibm.com>
++
++	* gcc.dg/dfp/pr97439.c: New test.
++
 +2020-10-13  Kyrylo Tkachov  <kyrylo.tkachov@arm.com>
 +
 +	Backported from master:
