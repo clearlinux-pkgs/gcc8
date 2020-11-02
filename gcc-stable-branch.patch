@@ -73,7 +73,11 @@ Fritz Reese (2):
       Backport form master: Fix fortran/85982 ICE in resolve_component.
       Indicate backport in changelogs from last commit.
 
-GCC Administrator (235):
+GCC Administrator (239):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -563,9 +567,10 @@ Thomas König (2):
       Backport from trunk of the fix for PR 94270.
       Fix PR 93956, wrong pointer when returned via function.
 
-Thomas Schwinge (2):
+Thomas Schwinge (3):
       'libgomp.oacc-fortran/{error_,}stop-{1,2,3}.f': initialize before the checkpoint
       [HSA] Avoid ICE when "HSA does not implement indirect calls"
+      libgomp testsuite: tell warning from error diagnostics, etc. [PR80219, PR85303]
 
 Tobias Burnus (2):
       [Fortran] Disable front-end optimization for OpenACC atomic (PR93462)
@@ -43336,6 +43341,23 @@ index 58323c23735..9bc4ac32fdd 100644
  2020-03-04  Release Manager
  
  	* GCC 8.4.0 released.
+diff --git a/libgomp/testsuite/lib/libgomp.exp b/libgomp/testsuite/lib/libgomp.exp
+index ea3da2cb383..04302074732 100644
+--- a/libgomp/testsuite/lib/libgomp.exp
++++ b/libgomp/testsuite/lib/libgomp.exp
+@@ -248,6 +248,12 @@ proc libgomp_init { args } {
+     if { $offload_additional_options != "" } {
+ 	lappend ALWAYS_CFLAGS "additional_flags=${offload_additional_options}"
+     }
++
++    # Tell warning from error diagnostics.  This fits for C, C++, and Fortran.
++    global gcc_warning_prefix
++    set gcc_warning_prefix "\[Ww\]arning:"
++    global gcc_error_prefix
++    set gcc_error_prefix "(\[Ff\]atal )?\[Ee\]rror:"
+ }
+ 
+ #
 diff --git a/libgomp/testsuite/libgomp.c++/pr93931.C b/libgomp/testsuite/libgomp.c++/pr93931.C
 new file mode 100644
 index 00000000000..4d4232ef340
