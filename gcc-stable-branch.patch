@@ -77,7 +77,9 @@ Fritz Reese (2):
       Backport form master: Fix fortran/85982 ICE in resolve_component.
       Indicate backport in changelogs from last commit.
 
-GCC Administrator (403):
+GCC Administrator (405):
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -859,10 +861,19 @@ index 659e82a2a51..4062e4cbf57 100644
  
  	* GCC 8.4.0 released.
 diff --git a/contrib/ChangeLog b/contrib/ChangeLog
-index e6dc6514fbe..c18865a6224 100644
+index e6dc6514fbe..5427672ec5a 100644
 --- a/contrib/ChangeLog
 +++ b/contrib/ChangeLog
-@@ -1,3 +1,82 @@
+@@ -1,3 +1,91 @@
++2021-04-14  Martin Liska  <mliska@suse.cz>
++
++	* gcc-changelog/git_commit.py: Sync with master.
++	* gcc-changelog/git_email.py: Likewise.
++	* gcc-changelog/git_update_version.py: Likewise.
++	* gcc-changelog/setup.cfg: Likewise.
++	* gcc-changelog/test_email.py: Likewise.
++	* gcc-changelog/test_patches.txt: Likewise.
++
 +2021-03-19  Matthias Klose  <doko@ubuntu.com>
 +
 +	Backported from master:
