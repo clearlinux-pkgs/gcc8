@@ -66,18 +66,23 @@ Douglas Rupp (1):
 Ed Schonberg (1):
       Fix PR ada/98230
 
-Eric Botcazou (5):
+Eric Botcazou (6):
       Fix incorrect filling of delay slots in branchy code at -O2
       Fix wrong year in ChangeLog.
       Fix Ada bootstrap on Cygwin64
       Fix memory corruption with vector and variant record
       Fix -freorder-blocks-and-partition glitch with Windows SEH
+      Fix another -freorder-blocks-and-partition glitch with Windows SEH
 
 Fritz Reese (2):
       Backport form master: Fix fortran/85982 ICE in resolve_component.
       Indicate backport in changelogs from last commit.
 
-GCC Administrator (405):
+GCC Administrator (409):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -612,7 +617,7 @@ John David Anglin (2):
       Define __BIG_ENDIAN__
       Add mi_thunk support for vcalls on hppa.
 
-Jonathan Wakely (27):
+Jonathan Wakely (31):
       doc: Note that some warnings depend on optimizations (PR 92757)
       libstdc++: Fix std::to_address for debug iterators (PR 93960)
       libstdc++: Document correct feature test macro, __cpp_lib_is_invocable
@@ -640,6 +645,10 @@ Jonathan Wakely (27):
       libstdc++: Fix std::any pretty printer [PR 68735]
       libstdc++: Fix filesystem::path pretty printer test failure
       libstdc++: Fix clang analyzer suppression [PR 98605]
+      libstdc++: Document when C++11/14/17 support became stable [PR 99058]
+      libstdc++: Fix errors from Library Fundamentals TS headers in C++11 [PR 98319]
+      libstdc++: Fix declarations of memalign etc. for freestanding [PR 97570]
+      libstdc++: Replace use of reserved name that clashes [PR 97362]
 
 Kewen Lin (1):
       testsuite: Add -fno-common to pr82374.c [PR94077]
@@ -6218,10 +6227,15 @@ index a2f28f43be3..6da4de57dc6 100644
 -8.4.0
 +8.4.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 142499c563c..c8fdb03b2fa 100644
+index 142499c563c..02d7a00cf19 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,2255 @@
+@@ -1,3 +1,2260 @@
++2021-04-19  Eric Botcazou  <ebotcazou@adacore.com>
++
++	* config/i386/winnt.c (i386_pe_seh_cold_init): Properly deal with
++	frames larger than the SEH maximum frame size.
++
 +2021-03-23  H.J. Lu  <hjl.tools@gmail.com>
 +
 +	Backported from master:
@@ -25176,10 +25190,43 @@ index 9312a0082c9..fa95cd0bd22 100644
  #error "Never use <wbnoinvdintrin.h> directly; include <x86intrin.h> instead."
  #endif
 diff --git a/gcc/config/i386/winnt.c b/gcc/config/i386/winnt.c
-index 89e4b6e8515..509c600ab2e 100644
+index 89e4b6e8515..6bfc9eb2470 100644
 --- a/gcc/config/i386/winnt.c
 +++ b/gcc/config/i386/winnt.c
-@@ -1231,6 +1231,10 @@ i386_pe_seh_unwind_emit (FILE *asm_out_file, rtx_insn *insn)
+@@ -910,15 +910,17 @@ i386_pe_seh_cold_init (FILE *f, const char *name)
+ 
+   /* In the normal case, the frame pointer is near the bottom of the frame
+      so we can do the full stack allocation and set it afterwards.  There
+-     is an exception when the function accesses prior frames so, in this
+-     case, we need to pre-allocate a small chunk before setting it.  */
+-  if (crtl->accesses_prior_frames)
+-    alloc_offset = seh->cfa_offset;
+-  else
++     is an exception if the function overflows the SEH maximum frame size
++     or accesses prior frames so, in this case, we need to pre-allocate a
++     small chunk of stack before setting it.  */
++  offset = seh->sp_offset - INCOMING_FRAME_SP_OFFSET;
++  if (offset < SEH_MAX_FRAME_SIZE && !crtl->accesses_prior_frames)
+     alloc_offset = seh->sp_offset;
++  else
++    alloc_offset = MIN (seh->cfa_offset + 240, seh->sp_offset);
+ 
+   offset = alloc_offset - INCOMING_FRAME_SP_OFFSET;
+-  if (offset > 0 && offset < SEH_MAX_FRAME_SIZE)
++  if (offset > 0)
+     fprintf (f, "\t.seh_stackalloc\t" HOST_WIDE_INT_PRINT_DEC "\n", offset);
+ 
+   for (int regno = 0; regno < FIRST_PSEUDO_REGISTER; regno++)
+@@ -947,7 +949,7 @@ i386_pe_seh_cold_init (FILE *f, const char *name)
+       fprintf (f, ", " HOST_WIDE_INT_PRINT_DEC "\n", offset);
+     }
+ 
+-  if (crtl->accesses_prior_frames)
++  if (alloc_offset != seh->sp_offset)
+     {
+       offset = seh->sp_offset - alloc_offset;
+       if (offset > 0 && offset < SEH_MAX_FRAME_SIZE)
+@@ -1231,6 +1233,10 @@ i386_pe_seh_unwind_emit (FILE *asm_out_file, rtx_insn *insn)
    seh = cfun->machine->seh;
    if (NOTE_P (insn) && NOTE_KIND (insn) == NOTE_INSN_SWITCH_TEXT_SECTIONS)
      {
@@ -30085,10 +30132,14 @@ index d06e88a8135..25377232248 100644
  
    if (warn_packed && TREE_CODE (rli->t) == RECORD_TYPE
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index ab652ddc144..51ca5fe2423 100644
+index ab652ddc144..3d0c722154e 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,1476 @@
+@@ -1,3 +1,1480 @@
++2021-04-19  Eric Botcazou  <ebotcazou@adacore.com>
++
++	* gnat.dg/opt92.adb: New test.
++
 +2021-04-02  Harald Anlauf  <anlauf@gmx.de>
 +
 +	Backported from master:
@@ -42793,6 +42844,50 @@ index 00000000000..f0f1c80c62f
 +      Put_Line("N: " & Integer'Image(N) & " Modulus:    " & Integer'Image(Modulus'Modulus) & " Mod:" & Modulus'Image(Modulus'Mod(N)));
 +   end loop;
 +end;
+diff --git a/gcc/testsuite/gnat.dg/opt92.adb b/gcc/testsuite/gnat.dg/opt92.adb
+new file mode 100644
+index 00000000000..f6eb6a034ec
+--- /dev/null
++++ b/gcc/testsuite/gnat.dg/opt92.adb
+@@ -0,0 +1,38 @@
++-- { dg-do compile { target { lp64 || llp64 } } }
++-- { dg-options "-O2 -gnatws" }
++
++procedure Main is
++
++   subtype Int64 is Long_Long_Integer;
++
++   type Arr is array (Int64 range <>) of Boolean;
++
++   Pow : constant := 10;
++
++   procedure Compute (B : in out Arr) is
++      Factor : Int64 := 3;
++      Num    : Int64;
++   begin
++      while Factor <= 10 ** (Pow / 2) loop
++         Num := Factor;
++         while Num < 10 ** Pow loop
++            if B (Num) then
++               Factor := Num;
++               exit;
++            end if;
++            Num := Num + 2;
++         end loop;
++         Num := Factor * Factor;
++         while Num < 10 ** Pow loop
++            B (Num) := False;
++            Num        := Num + Factor * 2;
++         end loop;
++         Factor := Factor + 2;
++      end loop;
++   end;
++
++   B : Arr (1 .. 10 ** Pow) := (others => True);
++
++begin
++   Compute (B);   
++end;
 diff --git a/gcc/testsuite/lib/gcc-dg.exp b/gcc/testsuite/lib/gcc-dg.exp
 index 3770f698c46..81014b9a09a 100644
 --- a/gcc/testsuite/lib/gcc-dg.exp
@@ -51406,10 +51501,58 @@ index caa33ec63e5..08df3065651 100644
        case _C_ULNG_LNG:
  	return MAX (MAX (comp, spec), 64);
 diff --git a/libstdc++-v3/ChangeLog b/libstdc++-v3/ChangeLog
-index 1d6f972584a..321c939c00f 100644
+index 1d6f972584a..6abd7847ee6 100644
 --- a/libstdc++-v3/ChangeLog
 +++ b/libstdc++-v3/ChangeLog
-@@ -1,3 +1,249 @@
+@@ -1,3 +1,297 @@
++2021-04-19  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2020-10-10  Jonathan Wakely  <jwakely@redhat.com>
++
++	PR libstdc++/97362
++	* doc/html/manual/source_code_style.html: Regenerate.
++	* doc/xml/manual/appendix_contributing.xml: Add __deref to
++	BADNAMES.
++	* include/debug/functions.h (_Irreflexive_checker::__deref):
++	Rename to __ref.
++
++2021-04-19  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2020-10-26  Jonathan Wakely  <jwakely@redhat.com>
++
++	PR libstdc++/97570
++	* libsupc++/new_opa.cc: Declare size_t in global namespace.
++	Remove unused header.
++
++2021-04-19  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2020-12-16  Jonathan Wakely  <jwakely@redhat.com>
++
++	PR libstdc++/98319
++	* include/experimental/memory_resource: Add system_header pragma
++	and only define contents for C++14 and later.
++	* include/experimental/random: Only define contents for C++14
++	and later.
++	* include/experimental/source_location: Likewise.
++	* include/experimental/utility: Likewise.
++	* testsuite/experimental/feat-lib-fund.cc: Include all LFTS
++	headers that are present. Allow test to run for all modes.
++
++2021-04-19  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2021-02-11  Jonathan Wakely  <jwakely@redhat.com>
++
++	PR libstdc++/99058
++	* doc/xml/manual/status_cxx2011.xml: Document when support
++	became stable.
++	* doc/xml/manual/status_cxx2014.xml: Likewise.
++	* doc/xml/manual/status_cxx2017.xml: Likewise.
++	* doc/html/manual/status.html: Regenerate.
++
 +2021-01-13  Jonathan Wakely  <jwakely@redhat.com>
 +
 +	Backported from master:
@@ -51826,11 +51969,52 @@ index 31187ddb869..a7c8c309e94 100644
  	is also specified, and applies to the debug builds only. With
  	this option, you can pass a specific string of flags to the
  	compiler to use when building the debug versions of libstdc++.
+diff --git a/libstdc++-v3/doc/html/manual/source_code_style.html b/libstdc++-v3/doc/html/manual/source_code_style.html
+index 19224b7ec13..d1a5804338b 100644
+--- a/libstdc++-v3/doc/html/manual/source_code_style.html
++++ b/libstdc++-v3/doc/html/manual/source_code_style.html
+@@ -32,6 +32,7 @@
+ <br />
+       MS adds:<br />
+       _T<br />
++			__deref<br />
+ <br />
+       BSD adds:<br />
+       __used<br />
 diff --git a/libstdc++-v3/doc/html/manual/status.html b/libstdc++-v3/doc/html/manual/status.html
-index 970c73d992b..189b4e5eda2 100644
+index 970c73d992b..ce10dd6c108 100644
 --- a/libstdc++-v3/doc/html/manual/status.html
 +++ b/libstdc++-v3/doc/html/manual/status.html
-@@ -689,7 +689,7 @@ Feature-testing recommendations for C++</a>.
+@@ -153,6 +153,9 @@ features. See <a class="link" href="using.html#manual.intro.using.flags" title="
+ options. The pre-defined symbol
+ <code class="constant">__cplusplus</code> is used to check for the
+ presence of the required flag.
++GCC 5.1 was the first release with non-experimental C++11 support,
++so the API and ABI of features added in C++11 is only stable
++since that release.
+ </p><p>
+ This page describes the C++11 support in the GCC 8 series.
+ </p><div class="table"><a id="table.cxx11_status"></a><p class="title"><strong>Table 1.2. C++ 2011 Implementation Status</strong></p><div class="table-contents"><table class="table" summary="C++ 2011 Implementation Status" border="1"><colgroup><col align="left" class="c1" /><col align="left" class="c2" /><col align="left" class="c3" /><col align="left" class="c4" /></colgroup><thead><tr><th align="left">Section</th><th align="left">Description</th><th align="left">Status</th><th align="left">Comments</th></tr></thead><tbody><tr><td align="left">
+@@ -385,6 +388,9 @@ features. See <a class="link" href="using.html#manual.intro.using.flags" title="
+ options. The pre-defined symbol
+ <code class="constant">__cplusplus</code> is used to check for the
+ presence of the required flag.
++GCC 6.1 was the first release with non-experimental C++14 support,
++so the API and ABI of features added in C++14 is only stable
++since that release.
+ </p><p>
+ This page describes the C++14 and library TS support in the GCC 8 series.
+ </p><div class="table"><a id="table.cxx14_status"></a><p class="title"><strong>Table 1.3. C++ 2014 Implementation Status</strong></p><div class="table-contents"><table class="table" summary="C++ 2014 Implementation Status" border="1"><colgroup><col align="left" class="c1" /><col align="left" class="c2" /><col align="left" class="c3" /><col align="left" class="c4" /></colgroup><thead><tr><th align="left">Paper</th><th align="left">Title</th><th align="left">Status</th><th align="left">Comments</th></tr></thead><tbody><tr><td align="left">
+@@ -519,6 +525,8 @@ features. See <a class="link" href="using.html#manual.intro.using.flags" title="
+ options. The pre-defined symbol
+ <code class="constant">__cplusplus</code> is used to check for the
+ presence of the required flag.
++C++17 support is experimental up to and including the GCC 8 series,
++so the API and ABI of features added in C++17 is not stable in those releases.
+ </p><p>
+ This section describes the C++17 and library TS support in the GCC 8 series.
+ </p><p>
+@@ -689,7 +697,7 @@ Feature-testing recommendations for C++</a>.
  	<a class="link" href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0077r2.html" target="_top">
  	P0077R2
  	</a>
@@ -52289,6 +52473,30 @@ index 733c803ffac..50570a3115a 100644
      </itemizedlist>
      </listitem>
  
+diff --git a/libstdc++-v3/doc/xml/manual/appendix_contributing.xml b/libstdc++-v3/doc/xml/manual/appendix_contributing.xml
+index eb011cbd4bc..f69ad1f9175 100644
+--- a/libstdc++-v3/doc/xml/manual/appendix_contributing.xml
++++ b/libstdc++-v3/doc/xml/manual/appendix_contributing.xml
+@@ -414,8 +414,9 @@ indicate a place that may require attention for multi-thread safety.
+   
+   <para>
+   </para>
+-  <section xml:id="coding_style.bad_identifiers"><info><title>Bad Identifiers</title></info>
+-    
++
++  <section xml:id="coding_style.bad_identifiers"><info><title>Bad Identifiers</title></info> <!-- BADNAMES -->
++
+     <para>
+       Identifiers that conflict and should be avoided.
+     </para>
+@@ -447,6 +448,7 @@ indicate a place that may require attention for multi-thread safety.
+ 
+       MS adds:
+       _T
++			__deref
+ 
+       BSD adds:
+       __used
 diff --git a/libstdc++-v3/doc/xml/manual/configure.xml b/libstdc++-v3/doc/xml/manual/configure.xml
 index ac383cf7fa7..761ef5cdfd8 100644
 --- a/libstdc++-v3/doc/xml/manual/configure.xml
@@ -52303,11 +52511,48 @@ index ac383cf7fa7..761ef5cdfd8 100644
  	is also specified, and applies to the debug builds only. With
  	this option, you can pass a specific string of flags to the
  	compiler to use when building the debug versions of libstdc++.
+diff --git a/libstdc++-v3/doc/xml/manual/status_cxx2011.xml b/libstdc++-v3/doc/xml/manual/status_cxx2011.xml
+index fd07f574ecb..466699e605c 100644
+--- a/libstdc++-v3/doc/xml/manual/status_cxx2011.xml
++++ b/libstdc++-v3/doc/xml/manual/status_cxx2011.xml
+@@ -24,6 +24,9 @@ features. See <link linkend="manual.intro.using.flags">dialect</link>
+ options. The pre-defined symbol
+ <constant>__cplusplus</constant> is used to check for the
+ presence of the required flag.
++GCC 5.1 was the first release with non-experimental C++11 support,
++so the API and ABI of features added in C++11 is only stable
++since that release.
+ </para>
+ 
+ <para>
+diff --git a/libstdc++-v3/doc/xml/manual/status_cxx2014.xml b/libstdc++-v3/doc/xml/manual/status_cxx2014.xml
+index ee0836ee8ef..131e67b700f 100644
+--- a/libstdc++-v3/doc/xml/manual/status_cxx2014.xml
++++ b/libstdc++-v3/doc/xml/manual/status_cxx2014.xml
+@@ -17,6 +17,9 @@ features. See <link linkend="manual.intro.using.flags">dialect</link>
+ options. The pre-defined symbol
+ <constant>__cplusplus</constant> is used to check for the
+ presence of the required flag.
++GCC 6.1 was the first release with non-experimental C++14 support,
++so the API and ABI of features added in C++14 is only stable
++since that release.
+ </para>
+ 
+ <para>
 diff --git a/libstdc++-v3/doc/xml/manual/status_cxx2017.xml b/libstdc++-v3/doc/xml/manual/status_cxx2017.xml
-index 7b5b4c41209..3931a7a71f9 100644
+index 7b5b4c41209..49ecc8df8b4 100644
 --- a/libstdc++-v3/doc/xml/manual/status_cxx2017.xml
 +++ b/libstdc++-v3/doc/xml/manual/status_cxx2017.xml
-@@ -458,7 +458,7 @@ Feature-testing recommendations for C++</link>.
+@@ -17,6 +17,8 @@ features. See <link linkend="manual.intro.using.flags">dialect</link>
+ options. The pre-defined symbol
+ <constant>__cplusplus</constant> is used to check for the
+ presence of the required flag.
++C++17 support is experimental up to and including the GCC 8 series,
++so the API and ABI of features added in C++17 is not stable in those releases.
+ </para>
+ 
+ <para>
+@@ -458,7 +460,7 @@ Feature-testing recommendations for C++</link>.
  	</link>
        </entry>
        <entry align="center"> 7.1 </entry>
@@ -52414,6 +52659,32 @@ index ccd5c834db8..50da41615d5 100644
  
      template<typename _InputIterator>
        seed_seq(_InputIterator __begin, _InputIterator __end);
+diff --git a/libstdc++-v3/include/debug/functions.h b/libstdc++-v3/include/debug/functions.h
+index 57cc6826ce0..8f52326de26 100644
+--- a/libstdc++-v3/include/debug/functions.h
++++ b/libstdc++-v3/include/debug/functions.h
+@@ -449,10 +449,10 @@ namespace __gnu_debug
+   {
+     template<typename _It>
+       static typename std::iterator_traits<_It>::reference
+-      __deref();
++      __ref();
+ 
+     template<typename _It,
+-	     typename = decltype(__deref<_It>() < __deref<_It>())>
++	     typename = decltype(__ref<_It>() < __ref<_It>())>
+       static bool
+       _S_is_valid(_It __it)
+       { return !(*__it < *__it); }
+@@ -464,7 +464,7 @@ namespace __gnu_debug
+       { return true; }
+ 
+     template<typename _It, typename _Pred, typename
+-	= decltype(std::declval<_Pred>()(__deref<_It>(), __deref<_It>()))>
++	= decltype(std::declval<_Pred>()(__ref<_It>(), __ref<_It>()))>
+       static bool
+       _S_is_valid_pred(_It __it, _Pred __pred)
+       { return !__pred(*__it, *__it); }
 diff --git a/libstdc++-v3/include/experimental/bits/fs_path.h b/libstdc++-v3/include/experimental/bits/fs_path.h
 index 705f76331b5..c212670b6ca 100644
 --- a/libstdc++-v3/include/experimental/bits/fs_path.h
@@ -52478,6 +52749,29 @@ index 705f76331b5..c212670b6ca 100644
  
    inline int
    path::compare(const string_type& __s) const { return compare(path(__s)); }
+diff --git a/libstdc++-v3/include/experimental/memory_resource b/libstdc++-v3/include/experimental/memory_resource
+index 23653ee2fe8..29e53930a39 100644
+--- a/libstdc++-v3/include/experimental/memory_resource
++++ b/libstdc++-v3/include/experimental/memory_resource
+@@ -29,6 +29,10 @@
+ #ifndef _GLIBCXX_EXPERIMENTAL_MEMORY_RESOURCE
+ #define _GLIBCXX_EXPERIMENTAL_MEMORY_RESOURCE 1
+ 
++#pragma GCC system_header
++
++#if __cplusplus >= 201402L
++
+ #include <memory>
+ #include <new>
+ #include <atomic>
+@@ -403,5 +407,5 @@ namespace pmr {
+ 
+ _GLIBCXX_END_NAMESPACE_VERSION
+ } // namespace std
+-
+-#endif
++#endif // C++14
++#endif // _GLIBCXX_EXPERIMENTAL_MEMORY_RESOURCE
 diff --git a/libstdc++-v3/include/experimental/numeric b/libstdc++-v3/include/experimental/numeric
 index c80848d2ba8..71bfe61b208 100644
 --- a/libstdc++-v3/include/experimental/numeric
@@ -52535,6 +52829,44 @@ index c80848d2ba8..71bfe61b208 100644
      }
  } // namespace fundamentals_v2
  } // namespace experimental
+diff --git a/libstdc++-v3/include/experimental/random b/libstdc++-v3/include/experimental/random
+index deb7bd6b75c..a26b5f6cdce 100644
+--- a/libstdc++-v3/include/experimental/random
++++ b/libstdc++-v3/include/experimental/random
+@@ -29,6 +29,7 @@
+ #ifndef _GLIBCXX_EXPERIMENTAL_RANDOM
+ #define _GLIBCXX_EXPERIMENTAL_RANDOM 1
+ 
++#if __cplusplus >= 201402L
+ #include <random>
+ #include <experimental/bits/lfts_config.h>
+ 
+@@ -77,4 +78,5 @@ inline namespace fundamentals_v2 {
+ _GLIBCXX_END_NAMESPACE_VERSION
+ } // namespace std
+ 
+-#endif
++#endif // C++14
++#endif // _GLIBCXX_EXPERIMENTAL_RANDOM
+diff --git a/libstdc++-v3/include/experimental/source_location b/libstdc++-v3/include/experimental/source_location
+index 389eb816be1..988d23e12db 100644
+--- a/libstdc++-v3/include/experimental/source_location
++++ b/libstdc++-v3/include/experimental/source_location
+@@ -29,6 +29,7 @@
+ #ifndef _GLIBCXX_EXPERIMENTAL_SRCLOC
+ #define _GLIBCXX_EXPERIMENTAL_SRCLOC 1
+ 
++#if __cplusplus >= 201402L
+ #include <cstdint>
+ 
+ namespace std {
+@@ -83,4 +84,5 @@ inline namespace fundamentals_v2 {
+ _GLIBCXX_END_NAMESPACE_VERSION
+ } // namespace std
+ 
+-#endif
++#endif // C++14
++#endif // _GLIBCXX_EXPERIMENTAL_SRCLOC
 diff --git a/libstdc++-v3/include/experimental/string_view b/libstdc++-v3/include/experimental/string_view
 index 2bbd9aa8a0a..107d801d8ee 100644
 --- a/libstdc++-v3/include/experimental/string_view
@@ -52568,6 +52900,25 @@ index 2bbd9aa8a0a..107d801d8ee 100644
  	return *(this->_M_str + this->_M_len - 1);
        }
  
+diff --git a/libstdc++-v3/include/experimental/utility b/libstdc++-v3/include/experimental/utility
+index 7e367196744..de3fe84a41b 100644
+--- a/libstdc++-v3/include/experimental/utility
++++ b/libstdc++-v3/include/experimental/utility
+@@ -29,6 +29,7 @@
+ #ifndef _GLIBCXX_EXPERIMENTAL_UTILITY
+ #define _GLIBCXX_EXPERIMENTAL_UTILITY 1
+ 
++#if __cplusplus >= 201402L
+ #include <utility>
+ #include <bits/uses_allocator.h>
+ #include <experimental/bits/lfts_config.h>
+@@ -46,4 +47,5 @@ inline namespace fundamentals_v2 {
+ _GLIBCXX_END_NAMESPACE_VERSION
+ } // namespace std
+ 
+-#endif
++#endif // C++14
++#endif // _GLIBCXX_EXPERIMENTAL_UTILITY
 diff --git a/libstdc++-v3/include/std/mutex b/libstdc++-v3/include/std/mutex
 index 71e915cc5a0..8476baa24ca 100644
 --- a/libstdc++-v3/include/std/mutex
@@ -52866,6 +53217,26 @@ index e0394179963..6c32dd4a51f 100644
  
    template<typename _Tp, bool = __is_referenceable<_Tp>::value>
      struct __is_nothrow_copy_constructible_impl;
+diff --git a/libstdc++-v3/libsupc++/new_opa.cc b/libstdc++-v3/libsupc++/new_opa.cc
+index e48982f7a08..017ee381f7a 100644
+--- a/libstdc++-v3/libsupc++/new_opa.cc
++++ b/libstdc++-v3/libsupc++/new_opa.cc
+@@ -26,7 +26,6 @@
+ #include <bits/c++config.h>
+ #include <stdlib.h>
+ #include <stdint.h>
+-#include <bits/exception_defines.h>
+ #include "new"
+ 
+ #if !_GLIBCXX_HAVE_ALIGNED_ALLOC && !_GLIBCXX_HAVE__ALIGNED_MALLOC \
+@@ -43,6 +42,7 @@ using std::new_handler;
+ using std::bad_alloc;
+ 
+ #if ! _GLIBCXX_HOSTED
++using std::size_t;
+ extern "C"
+ {
+ # if _GLIBCXX_HAVE_ALIGNED_ALLOC
 diff --git a/libstdc++-v3/python/libstdcxx/v6/printers.py b/libstdc++-v3/python/libstdcxx/v6/printers.py
 index 37b8173435d..ba9bbc096a0 100644
 --- a/libstdc++-v3/python/libstdcxx/v6/printers.py
@@ -54489,6 +54860,104 @@ index 16335443c76..c813987ca42 100644
 +  test02();
 +  test03();
  }
+diff --git a/libstdc++-v3/testsuite/experimental/feat-lib-fund.cc b/libstdc++-v3/testsuite/experimental/feat-lib-fund.cc
+index b0e6e289009..342edc5352d 100644
+--- a/libstdc++-v3/testsuite/experimental/feat-lib-fund.cc
++++ b/libstdc++-v3/testsuite/experimental/feat-lib-fund.cc
+@@ -1,57 +1,36 @@
+-// { dg-do preprocess { target c++14 } }
+-
+-#if !__has_include(<experimental/tuple>)
+-#  error "<experimental/tuple>"
+-#endif
+-
+-#if !__has_include(<experimental/type_traits>)
+-#  error "<experimental/type_traits>"
+-#endif
+-
+-#if !__has_include(<experimental/ratio>)
+-#  error "<experimental/ratio>"
+-#endif
+-
+-#if !__has_include(<experimental/chrono>)
+-#  error "<experimental/chrono>"
+-#endif
+-
+-#if !__has_include(<experimental/system_error>)
+-#  error "<experimental/system_error>"
+-#endif
+-
+-#if !__has_include(<experimental/functional>)
+-#  error "<experimental/functional>"
+-#endif
+-
+-#if !__has_include(<experimental/optional>)
+-#  error "<experimental/optional>"
+-#endif
+-
+-#if !__has_include(<experimental/any>)
+-#  error "<experimental/any>"
+-#endif
+-
+-#if !__has_include(<experimental/string_view>)
+-#  error "<experimental/string_view>"
+-#endif
+-
+-//#if !__has_include(<experimental/memory>)
+-//#  error "<experimental/memory>"
+-//#endif
+-
+-//#if !__has_include(<experimental/memory_resource>)
+-//#  error "<experimental/memory_resource>"
+-//#endif
+-
+-//#if !__has_include(<experimental/future>)
+-//#  error "<experimental/future>"
+-//#endif
+-
+-#if !__has_include(<experimental/algorithm>)
+-#  error "<experimental/algorithm>"
+-#endif
+-
+-//#if !__has_include(<experimental/net>)
+-//#  error "<experimental/net>"
+-//#endif
++// { dg-do preprocess }
++
++// Include all the LFTS headers. This should work with any -std flag.
++
++#include <experimental/algorithm>
++#include <experimental/any>
++#include <experimental/array>
++#include <experimental/chrono>
++#include <experimental/deque>
++#include <experimental/forward_list>
++#include <experimental/functional>
++#if __has_include(<experimental/future>) // not supported as of GCC 11
++# include <experimental/future>
++#endif
++#include <experimental/iterator>
++#include <experimental/list>
++#include <experimental/map>
++#include <experimental/memory>
++#include <experimental/memory_resource>
++#include <experimental/numeric>
++#include <experimental/optional>
++#include <experimental/propagate_const>
++#include <experimental/random>
++#include <experimental/ratio>
++#include <experimental/regex>
++#include <experimental/set>
++#include <experimental/source_location>
++#include <experimental/string>
++#include <experimental/string_view>
++#include <experimental/system_error>
++#include <experimental/tuple>
++#include <experimental/type_traits>
++#include <experimental/unordered_map>
++#include <experimental/unordered_set>
++#include <experimental/utility>
++#include <experimental/vector>
 diff --git a/libstdc++-v3/testsuite/experimental/filesystem/iterators/97731.cc b/libstdc++-v3/testsuite/experimental/filesystem/iterators/97731.cc
 new file mode 100644
 index 00000000000..c6a9d5663fe
