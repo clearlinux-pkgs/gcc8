@@ -78,7 +78,9 @@ Fritz Reese (2):
       Backport form master: Fix fortran/85982 ICE in resolve_component.
       Indicate backport in changelogs from last commit.
 
-GCC Administrator (409):
+GCC Administrator (411):
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -730,10 +732,14 @@ Nathan Sidwell (2):
       c++: Fix ICE on popping local scope [pr84733]
       c++: Fix template parm ICE [PR 98297]
 
+Patrick Palka (2):
+      c++: Distinguish alignof and __alignof__ in cp_tree_equal [PR97273]
+      libstdc++: Fix division by zero in std::sample
+
 Peter Bergner (1):
       rs6000: Use the correct minimized testcase
 
-Richard Biener (16):
+Richard Biener (17):
       tree-optimization/94163 constrain alignment set by PRE
       testsuite/97688 - fix check_vect () with __AVX2__
       middle-end/97554 - avoid overflow in alloc size compute
@@ -750,6 +756,7 @@ Richard Biener (16):
       tree-optimization/96579 - another special-operands fix in reassoc
       tree-optimization/97255 - missing vector bool pattern of SRAed bool
       tree-optimization/93964 - adjust ISL code generation for pointer params
+      testsuite/100176 - fix struct-layout-1_generate.c compile
 
 Richard Earnshaw (1):
       arm: correct constraints on movsi_compare0 [PR91913]
@@ -26828,10 +26835,20 @@ index d6f2d5b2ed0..a3211db36c0 100644
  esac
  
 diff --git a/gcc/cp/ChangeLog b/gcc/cp/ChangeLog
-index a525d4f4f9e..f26cd3faaff 100644
+index a525d4f4f9e..dc23cf26fbd 100644
 --- a/gcc/cp/ChangeLog
 +++ b/gcc/cp/ChangeLog
-@@ -1,3 +1,162 @@
+@@ -1,3 +1,172 @@
++2021-04-21  Patrick Palka  <ppalka@redhat.com>
++
++	Backported from master:
++	2020-10-07  Patrick Palka  <ppalka@redhat.com>
++
++	PR c++/88115
++	PR libstdc++/97273
++	* tree.c (cp_tree_equal) <case ALIGNOF_EXPR>: Return false if
++	ALIGNOF_EXPR_STD_P differ.
++
 +2020-12-16  Nathan Sidwell  <nathan@acm.org>
 +
 +	* parser.c (cp_parser_elaborated_type_specifier): Test
@@ -27539,6 +27556,20 @@ index 5099215ab5b..548e65b06e1 100644
  		  if (TREE_CODE (fndecl) != FUNCTION_DECL
  		      || !TREE_THIS_VOLATILE (fndecl))
  		    abnormal = false;
+diff --git a/gcc/cp/tree.c b/gcc/cp/tree.c
+index 9cf3ad42533..2dcc0354c83 100644
+--- a/gcc/cp/tree.c
++++ b/gcc/cp/tree.c
+@@ -3816,6 +3816,9 @@ cp_tree_equal (tree t1, tree t2)
+ 	    if (SIZEOF_EXPR_TYPE_P (t2))
+ 	      o2 = TREE_TYPE (o2);
+ 	  }
++	else if (ALIGNOF_EXPR_STD_P (t1) != ALIGNOF_EXPR_STD_P (t2))
++	  return false;
++
+ 	if (TREE_CODE (o1) != TREE_CODE (o2))
+ 	  return false;
+ 	if (TYPE_P (o1))
 diff --git a/gcc/cp/typeck.c b/gcc/cp/typeck.c
 index 5c064086e90..c099892b2bc 100644
 --- a/gcc/cp/typeck.c
@@ -30132,10 +30163,28 @@ index d06e88a8135..25377232248 100644
  
    if (warn_packed && TREE_CODE (rli->t) == RECORD_TYPE
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index ab652ddc144..3d0c722154e 100644
+index ab652ddc144..45544148d88 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,1480 @@
+@@ -1,3 +1,1498 @@
++2021-04-21  Patrick Palka  <ppalka@redhat.com>
++
++	Backported from master:
++	2020-10-07  Patrick Palka  <ppalka@redhat.com>
++
++	PR c++/88115
++	PR libstdc++/97273
++	* g++.dg/template/alignof3.C: New test.
++
++2021-04-21  Richard Biener  <rguenther@suse.de>
++
++	Backported from master:
++	2021-04-21  Richard Biener  <rguenther@suse.de>
++
++	PR testsuite/100176
++	* g++.dg/compat/struct-layout-1_generate.c: Add missing return.
++	* gcc.dg/compat/struct-layout-1_generate.c: Likewise.
++
 +2021-04-19  Eric Botcazou  <ebotcazou@adacore.com>
 +
 +	* gnat.dg/opt92.adb: New test.
@@ -32202,6 +32251,19 @@ index 00000000000..f2661997a33
 +void af() { v<f>(); }
 +
 +// { dg-final { scan-assembler "_Z1vI1fE1xIXplLi0EsrT_1dEEv" } }
+diff --git a/gcc/testsuite/g++.dg/compat/struct-layout-1_generate.c b/gcc/testsuite/g++.dg/compat/struct-layout-1_generate.c
+index 8b620e46da8..db4c85b6661 100644
+--- a/gcc/testsuite/g++.dg/compat/struct-layout-1_generate.c
++++ b/gcc/testsuite/g++.dg/compat/struct-layout-1_generate.c
+@@ -968,6 +968,8 @@ subvalues (struct entry *e, char *p, char *letter)
+       if (e[0].len != 0)
+ 	output_FNB ('B', e);
+       return 1;
++    default:
++      return 0;
+     }
+ }
+ 
 diff --git a/gcc/testsuite/g++.dg/cpp0x/alignof5.C b/gcc/testsuite/g++.dg/cpp0x/alignof5.C
 new file mode 100644
 index 00000000000..09354d3e1d0
@@ -33634,6 +33696,25 @@ index 00000000000..a9bfb24f795
 +  for (int b; b; b++)
 +    c += g[b].e();
 +}
+diff --git a/gcc/testsuite/g++.dg/template/alignof3.C b/gcc/testsuite/g++.dg/template/alignof3.C
+new file mode 100644
+index 00000000000..e573727c5f2
+--- /dev/null
++++ b/gcc/testsuite/g++.dg/template/alignof3.C
+@@ -0,0 +1,13 @@
++// PR c++/88115
++// { dg-do compile { target c++11 } }
++
++template<int __v>
++struct integral_constant {
++  static constexpr int value = __v;
++};
++
++template <class T> using StdAlignOf = integral_constant<alignof(T)>;
++template <class T> using GCCAlignOf = integral_constant<__alignof__(T)>;
++
++static_assert(StdAlignOf<double>::value == alignof(double), "");
++static_assert(GCCAlignOf<double>::value == __alignof__(double), "");
 diff --git a/gcc/testsuite/g++.dg/template/pr98297.C b/gcc/testsuite/g++.dg/template/pr98297.C
 new file mode 100644
 index 00000000000..0dd63a57b5c
@@ -34610,6 +34691,19 @@ index 00000000000..08ddcf4407e
 +  int a;				/* { dg-bogus "set but not used" } */
 +  return _Generic (0, long long : a, default: 0);
 +}
+diff --git a/gcc/testsuite/gcc.dg/compat/struct-layout-1_generate.c b/gcc/testsuite/gcc.dg/compat/struct-layout-1_generate.c
+index 75e902cd1f4..35dff89c377 100644
+--- a/gcc/testsuite/gcc.dg/compat/struct-layout-1_generate.c
++++ b/gcc/testsuite/gcc.dg/compat/struct-layout-1_generate.c
+@@ -1280,6 +1280,8 @@ subvalues (struct entry *e, char *p, char *letter)
+       if (e[0].len != 0)
+ 	output_FNB ('B', e);
+       return 1;
++    default:
++      return 0;
+     }
+ }
+ 
 diff --git a/gcc/testsuite/gcc.dg/dfp/pr94111.c b/gcc/testsuite/gcc.dg/dfp/pr94111.c
 new file mode 100644
 index 00000000000..ea3a132270a
@@ -51501,10 +51595,19 @@ index caa33ec63e5..08df3065651 100644
        case _C_ULNG_LNG:
  	return MAX (MAX (comp, spec), 64);
 diff --git a/libstdc++-v3/ChangeLog b/libstdc++-v3/ChangeLog
-index 1d6f972584a..6abd7847ee6 100644
+index 1d6f972584a..d6896b6733b 100644
 --- a/libstdc++-v3/ChangeLog
 +++ b/libstdc++-v3/ChangeLog
-@@ -1,3 +1,297 @@
+@@ -1,3 +1,306 @@
++2021-04-21  Patrick Palka  <ppalka@redhat.com>
++
++	Backported from master:
++	2020-09-22  Patrick Palka  <ppalka@redhat.com>
++
++	* include/bits/stl_algo.h (__sample): Exit early when the
++	input range is empty.
++	* testsuite/25_algorithms/sample/3.cc: New test.
++
 +2021-04-19  Jonathan Wakely  <jwakely@redhat.com>
 +
 +	Backported from master:
@@ -52659,6 +52762,20 @@ index ccd5c834db8..50da41615d5 100644
  
      template<typename _InputIterator>
        seed_seq(_InputIterator __begin, _InputIterator __end);
+diff --git a/libstdc++-v3/include/bits/stl_algo.h b/libstdc++-v3/include/bits/stl_algo.h
+index 753ebb7a09c..5c3d29bee5f 100644
+--- a/libstdc++-v3/include/bits/stl_algo.h
++++ b/libstdc++-v3/include/bits/stl_algo.h
+@@ -5754,6 +5754,9 @@ _GLIBCXX_BEGIN_NAMESPACE_ALGO
+       using _Gen = remove_reference_t<_UniformRandomBitGenerator>;
+       using __uc_type = common_type_t<typename _Gen::result_type, _USize>;
+ 
++      if (__first == __last)
++	return __out;
++
+       __distrib_type __d{};
+       _Size __unsampled_sz = std::distance(__first, __last);
+       __n = std::min(__n, __unsampled_sz);
 diff --git a/libstdc++-v3/include/debug/functions.h b/libstdc++-v3/include/debug/functions.h
 index 57cc6826ce0..8f52326de26 100644
 --- a/libstdc++-v3/include/debug/functions.h
@@ -54445,6 +54562,62 @@ index 00000000000..867a42150e0
 +{
 +  std::tuple<X, X> o{1, 1};
 +  std::tuple<Y, Y> oo(std::allocator_arg, std::allocator<int>(), o);
++}
+diff --git a/libstdc++-v3/testsuite/25_algorithms/sample/3.cc b/libstdc++-v3/testsuite/25_algorithms/sample/3.cc
+new file mode 100644
+index 00000000000..e89c40e27ee
+--- /dev/null
++++ b/libstdc++-v3/testsuite/25_algorithms/sample/3.cc
+@@ -0,0 +1,50 @@
++// Copyright (C) 2020 Free Software Foundation, Inc.
++//
++// This file is part of the GNU ISO C++ Library.  This library is free
++// software; you can redistribute it and/or modify it under the
++// terms of the GNU General Public License as published by the
++// Free Software Foundation; either version 3, or (at your option)
++// any later version.
++
++// This library is distributed in the hope that it will be useful,
++// but WITHOUT ANY WARRANTY; without even the implied warranty of
++// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++// GNU General Public License for more details.
++
++// You should have received a copy of the GNU General Public License along
++// with this library; see the file COPYING3.  If not see
++// <http://www.gnu.org/licenses/>.
++
++// { dg-options "-std=gnu++17" }
++// { dg-do run { target c++17 } }
++// { dg-require-cstdint "" }
++
++#include <algorithm>
++#include <random>
++#include <testsuite_hooks.h>
++#include <testsuite_iterators.h>
++
++std::mt19937 rng;
++
++using std::sample;
++using __gnu_test::test_container;
++using __gnu_test::output_iterator_wrapper;
++using __gnu_test::forward_iterator_wrapper;
++
++void
++test01()
++{
++  const int in = 0;
++  test_container<const int, forward_iterator_wrapper> pop(&in, &in);
++  int out;
++  test_container<int, output_iterator_wrapper> samp(&out, &out + 1);
++
++  auto it = sample(pop.begin(), pop.end(), samp.begin(), 1, rng);
++  VERIFY( it.ptr == &out );
++}
++
++int
++main()
++{
++  test01();
 +}
 diff --git a/libstdc++-v3/testsuite/26_numerics/gcd/92978.cc b/libstdc++-v3/testsuite/26_numerics/gcd/92978.cc
 new file mode 100644
