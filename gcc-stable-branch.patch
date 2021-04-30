@@ -538,7 +538,7 @@ Iain Sandoe (2):
       Darwin: Fix i686 bootstrap when the assembler supports GOTOFF in data.
       libobjc, Darwin : Fix powerpc encoding regression.
 
-Jakub Jelinek (125):
+Jakub Jelinek (126):
       Bump BASE-VER to 8.4.1
       maintainer-scripts: Speed up git clone in gcc_release
       gimplify: Don't optimize register const vars to static [PR93949]
@@ -664,8 +664,12 @@ Jakub Jelinek (125):
       c++: Fix up handling of structured bindings in extract_locals_r [PR99833]
       intl: Add --enable-host-shared support [PR100096]
       sanitizer: Fix asan against glibc 2.34 [PR100114]
+      testsuite: Adjust expected error in a testcase [PR98358]
 
-Jason Merrill (11):
+James Clarke (1):
+      bootstrap/87338 - gcc 8.2 fails to bootstrap on ia64
+
+Jason Merrill (12):
       c++: Fix CTAD with multiple-arg ctor template [93248].
       c++: Fix ICE-after-error on partial spec [92068]
       c++: Find parameter pack in typedef in lambda [92909].
@@ -677,6 +681,7 @@ Jason Merrill (11):
       c++: Fix FE devirt with diamond inheritance [PR95158]
       dwarf2: ICE with local class in unused function [PR97918]
       c++: Allow parm of empty class type in constexpr.
+      c++: Fix ICE with using and virtual function. [PR95719]
 
 John David Anglin (2):
       Define __BIG_ENDIAN__
@@ -806,7 +811,7 @@ Patrick Palka (2):
 Peter Bergner (1):
       rs6000: Use the correct minimized testcase
 
-Richard Biener (21):
+Richard Biener (22):
       tree-optimization/94163 constrain alignment set by PRE
       testsuite/97688 - fix check_vect () with __AVX2__
       middle-end/97554 - avoid overflow in alloc size compute
@@ -828,6 +833,7 @@ Richard Biener (21):
       lto/96591 - walk VECTOR_CST elements in walk_tree
       lto/96385 - avoid unused global UNDEFs in debug objects
       tree-optimization/99954 - fix loop distribution memcpy classification
+      c++/98032 - add testcase
 
 Richard Earnshaw (1):
       arm: correct constraints on movsi_compare0 [PR91913]
@@ -28103,7 +28109,7 @@ index a525d4f4f9e..34ecef36038 100644
  
  	* GCC 8.4.0 released.
 diff --git a/gcc/cp/call.c b/gcc/cp/call.c
-index 22de5c70425..89a3053081d 100644
+index 22de5c70425..836ece3f56d 100644
 --- a/gcc/cp/call.c
 +++ b/gcc/cp/call.c
 @@ -5588,6 +5588,15 @@ op_is_ordered (tree_code code)
@@ -28122,7 +28128,7 @@ index 22de5c70425..89a3053081d 100644
        return (flag_strong_eval_order ? 1 : 0);
  
      default:
-@@ -7905,6 +7914,15 @@ build_over_call (struct z_candidate *cand, int flags, tsubst_flags_t complain)
+@@ -7905,6 +7914,19 @@ build_over_call (struct z_candidate *cand, int flags, tsubst_flags_t complain)
  	  || CLASSTYPE_FINAL (TYPE_METHOD_BASETYPE (TREE_TYPE (fn))))
  	flags |= LOOKUP_NONVIRTUAL;
  
@@ -28131,14 +28137,18 @@ index 22de5c70425..89a3053081d 100644
 +      if (DECL_VINDEX (fn) && (flags & LOOKUP_NONVIRTUAL) == 0
 +	  && resolves_to_fixed_type_p (arg))
 +	{
-+	  fn = lookup_vfn_in_binfo (DECL_VINDEX (fn), cand->conversion_path);
++	  tree binfo = cand->conversion_path;
++	  if (BINFO_TYPE (binfo) != DECL_CONTEXT (fn))
++	    binfo = lookup_base (binfo, DECL_CONTEXT (fn), ba_unique,
++				 NULL, complain);
++	  fn = lookup_vfn_in_binfo (DECL_VINDEX (fn), binfo);
 +	  flags |= LOOKUP_NONVIRTUAL;
 +	}
 +
        /* [class.mfct.nonstatic]: If a nonstatic member function of a class
  	 X is called for an object that is not of type X, or of a type
  	 derived from X, the behavior is undefined.
-@@ -9387,17 +9405,6 @@ build_new_method_call_1 (tree instance, tree fns, vec<tree, va_gc> **args,
+@@ -9387,17 +9409,6 @@ build_new_method_call_1 (tree instance, tree fns, vec<tree, va_gc> **args,
  
  	  if (call != error_mark_node)
  	    {
@@ -28157,10 +28167,10 @@ index 22de5c70425..89a3053081d 100644
                  flags |= LOOKUP_EXPLICIT_TMPL_ARGS;
  	      /* Now we know what function is being called.  */
 diff --git a/gcc/cp/class.c b/gcc/cp/class.c
-index 07ce48917f6..b06aa6faedf 100644
+index 07ce48917f6..baf3bbed2c1 100644
 --- a/gcc/cp/class.c
 +++ b/gcc/cp/class.c
-@@ -2395,6 +2395,20 @@ get_vcall_index (tree fn, tree type)
+@@ -2395,6 +2395,24 @@ get_vcall_index (tree fn, tree type)
    gcc_unreachable ();
  }
  
@@ -28174,6 +28184,10 @@ index 07ce48917f6..b06aa6faedf 100644
 +  int ix = tree_to_shwi (idx);
 +  if (TARGET_VTABLE_USES_DESCRIPTORS)
 +    ix /= MAX (TARGET_VTABLE_USES_DESCRIPTORS, 1);
++  while (BINFO_PRIMARY_P (binfo))
++    /* BINFO_VIRTUALS in a primary base isn't accurate, find the derived
++       class that actually owns the vtable.  */
++    binfo = BINFO_INHERITANCE_CHAIN (binfo);
 +  tree virtuals = BINFO_VIRTUALS (binfo);
 +  return TREE_VALUE (chain_index (ix, virtuals));
 +}
@@ -29575,7 +29589,7 @@ index bed6c981852..c3e69e8b87e 100644
    cur_row = NULL;
    cur_trace = NULL;
 diff --git a/gcc/dwarf2out.c b/gcc/dwarf2out.c
-index 23107c0c33f..6227874b719 100644
+index 23107c0c33f..2a2673910ea 100644
 --- a/gcc/dwarf2out.c
 +++ b/gcc/dwarf2out.c
 @@ -3777,7 +3777,7 @@ static void add_data_member_location_attribute (dw_die_ref, tree,
@@ -29814,7 +29828,21 @@ index 23107c0c33f..6227874b719 100644
      }
    else
      cached_next_real_insn = NULL;
-@@ -31913,13 +31957,13 @@ dwarf2out_early_finish (const char *filename)
+@@ -27613,11 +27657,8 @@ dwarf2out_inline_entry (tree block)
+   if (cur_line_info_table)
+     ied->view = cur_line_info_table->view;
+ 
+-  char label[MAX_ARTIFICIAL_LABEL_BYTES];
+-
+-  ASM_GENERATE_INTERNAL_LABEL (label, BLOCK_INLINE_ENTRY_LABEL,
+-			       BLOCK_NUMBER (block));
+-  ASM_OUTPUT_LABEL (asm_out_file, label);
++  ASM_OUTPUT_DEBUG_LABEL (asm_out_file, BLOCK_INLINE_ENTRY_LABEL,
++			  BLOCK_NUMBER (block));
+ }
+ 
+ /* Called from finalize_size_functions for size functions so that their body
+@@ -31913,13 +31954,13 @@ dwarf2out_early_finish (const char *filename)
       emit full debugging info for them.  */
    retry_incomplete_types ();
  
@@ -36882,6 +36910,32 @@ index 00000000000..a9bfb24f795
 +  for (int b; b; b++)
 +    c += g[b].e();
 +}
+diff --git a/gcc/testsuite/g++.dg/pr98032.C b/gcc/testsuite/g++.dg/pr98032.C
+new file mode 100644
+index 00000000000..d7eef276668
+--- /dev/null
++++ b/gcc/testsuite/g++.dg/pr98032.C
+@@ -0,0 +1,20 @@
++// { dg-do compile }
++
++namespace osl {
++class Thread {
++public:
++  virtual ~Thread();
++  virtual void join();
++};
++} // namespace osl
++class SimpleReferenceObject {
++protected:
++  virtual ~SimpleReferenceObject();
++};
++class Thread : SimpleReferenceObject, osl::Thread {
++public:
++  using osl::Thread::join;
++};
++class RenderThread : Thread {
++  RenderThread() { join(); }
++};
 diff --git a/gcc/testsuite/g++.dg/pr98136.C b/gcc/testsuite/g++.dg/pr98136.C
 new file mode 100644
 index 00000000000..f3c27f6b09f
@@ -36935,7 +36989,7 @@ index 00000000000..e573727c5f2
 +static_assert(GCCAlignOf<double>::value == __alignof__(double), "");
 diff --git a/gcc/testsuite/g++.dg/template/pr98297.C b/gcc/testsuite/g++.dg/template/pr98297.C
 new file mode 100644
-index 00000000000..0dd63a57b5c
+index 00000000000..9e7d07e2c18
 --- /dev/null
 +++ b/gcc/testsuite/g++.dg/template/pr98297.C
 @@ -0,0 +1,6 @@
@@ -36943,7 +36997,7 @@ index 00000000000..0dd63a57b5c
 +// { dg-do compile { target c++11 } }
 +template <template <class> class a>
 +struct [[b]]
-+a <int>; // { dg-error "does not declare anything" }
++a <int>; // { dg-error "name of class shadows template template parameter" }
 +// { dg-warning "ignored" "" { target *-*-* } .-1 }
 diff --git a/gcc/testsuite/g++.dg/template/virtual5.C b/gcc/testsuite/g++.dg/template/virtual5.C
 new file mode 100644
@@ -37055,6 +37109,22 @@ index 00000000000..3cddde58bdd
 +	  o = n;
 +      }
 +}
+diff --git a/gcc/testsuite/g++.dg/tree-ssa/final4.C b/gcc/testsuite/g++.dg/tree-ssa/final4.C
+new file mode 100644
+index 00000000000..cce6e9afadb
+--- /dev/null
++++ b/gcc/testsuite/g++.dg/tree-ssa/final4.C
+@@ -0,0 +1,10 @@
++// PR c++/95719
++// { dg-do compile { target c++11 } }
++
++struct S1 { virtual ~S1(); };
++struct S2 {
++    virtual ~S2();
++    virtual void f();
++};
++struct S3 final: S1, S2 { using S2::f; };
++void g(S3 & s) { s.f(); }
 diff --git a/gcc/testsuite/g++.dg/ubsan/pr95693.C b/gcc/testsuite/g++.dg/ubsan/pr95693.C
 new file mode 100644
 index 00000000000..13f688e8ec0
