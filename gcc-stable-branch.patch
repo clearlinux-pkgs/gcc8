@@ -1,7 +1,7 @@
 Alan Modra (1):
       [RS6000] ICE in decompose, at rtl.h:2282
 
-Alex Coplan (7):
+Alex Coplan (8):
       aarch64: PR target/94591: Don't generate invalid REV64 insns
       arm: Don't generate invalid LDRD insns
       aarch64: Add support for Neoverse V1 CPU
@@ -9,6 +9,10 @@ Alex Coplan (7):
       aarch64: Add support for Neoverse N2 CPU
       arm: Add support for Neoverse N2 CPU
       arm: Add missing part number for Neoverse V1
+      early-remat.c: Fix new/delete mismatch [PR100230]
+
+Alexander Monakov (1):
+      haifa-sched: handle fallthru edge to EXIT block (PR 85899)
 
 Alexandre Oliva (1):
       accept <case> and [cond] in ChangeLog
@@ -78,7 +82,12 @@ Fritz Reese (2):
       Backport form master: Fix fortran/85982 ICE in resolve_component.
       Indicate backport in changelogs from last commit.
 
-GCC Administrator (419):
+GCC Administrator (424):
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
+      Daily bump.
       Daily bump.
       Daily bump.
       Daily bump.
@@ -538,7 +547,7 @@ Iain Sandoe (2):
       Darwin: Fix i686 bootstrap when the assembler supports GOTOFF in data.
       libobjc, Darwin : Fix powerpc encoding regression.
 
-Jakub Jelinek (126):
+Jakub Jelinek (131):
       Bump BASE-VER to 8.4.1
       maintainer-scripts: Speed up git clone in gcc_release
       gimplify: Don't optimize register const vars to static [PR93949]
@@ -665,6 +674,11 @@ Jakub Jelinek (126):
       intl: Add --enable-host-shared support [PR100096]
       sanitizer: Fix asan against glibc 2.34 [PR100114]
       testsuite: Adjust expected error in a testcase [PR98358]
+      cprop: Fix -fcompare-debug bug in constprop_register [PR100148]
+      vmsdbgout: Remove useless register keywords
+      cfgcleanup: Fix -fcompare-debug issue in outgoing_edges_match [PR100254]
+      aarch64: Fix ICE in aarch64_add_offset_1_temporaries [PR100302]
+      nvptx: Fix up nvptx build against latest libstdc++ [PR100375]
 
 James Clarke (1):
       bootstrap/87338 - gcc 8.2 fails to bootstrap on ia64
@@ -683,11 +697,14 @@ Jason Merrill (12):
       c++: Allow parm of empty class type in constexpr.
       c++: Fix ICE with using and virtual function. [PR95719]
 
+Jeff Law (1):
+      re PR rtl-optimization/81025 (gcc ICE while building glibc for MIPS soft-float multi-lib variant)
+
 John David Anglin (2):
       Define __BIG_ENDIAN__
       Add mi_thunk support for vcalls on hppa.
 
-Jonathan Wakely (32):
+Jonathan Wakely (33):
       doc: Note that some warnings depend on optimizations (PR 92757)
       libstdc++: Fix std::to_address for debug iterators (PR 93960)
       libstdc++: Document correct feature test macro, __cpp_lib_is_invocable
@@ -720,6 +737,7 @@ Jonathan Wakely (32):
       libstdc++: Fix declarations of memalign etc. for freestanding [PR 97570]
       libstdc++: Replace use of reserved name that clashes [PR 97362]
       libstdc++: Define __cpp_lib_constexpr_string macro
+      libstdc++: Fix inconsistent feature test macro
 
 Kewen Lin (1):
       testsuite: Add -fno-common to pr82374.c [PR94077]
@@ -811,7 +829,7 @@ Patrick Palka (2):
 Peter Bergner (1):
       rs6000: Use the correct minimized testcase
 
-Richard Biener (22):
+Richard Biener (24):
       tree-optimization/94163 constrain alignment set by PRE
       testsuite/97688 - fix check_vect () with __AVX2__
       middle-end/97554 - avoid overflow in alloc size compute
@@ -834,17 +852,20 @@ Richard Biener (22):
       lto/96385 - avoid unused global UNDEFs in debug objects
       tree-optimization/99954 - fix loop distribution memcpy classification
       c++/98032 - add testcase
+      re PR tree-optimization/86159 (g++ ICE at -O1 and above on valid code: incorrect type of vector CONSTRUCTOR elements)
+      tree-optimization/98786 - fix issue with phiopt and abnormals
 
 Richard Earnshaw (1):
       arm: correct constraints on movsi_compare0 [PR91913]
 
-Richard Sandiford (6):
+Richard Sandiford (7):
       Update links to Arm docs
       arm: Extend the PR94780 fix to arm
       aarch64: Clear canary value after stack_protect_test [PR96191]
       early-remat: Handle sets of multiple candidate regs [PR94605]
       aarch64: Tweak post-RA handling of CONST_INT moves [PR98136]
       Check for matching CONST_VECTOR encodings [PR99929]
+      Add missing alignment checks in epilogue loop vectorisation (PR 86877)
 
 Roman Zhuykov (1):
       modulo-sched: Carefully process loop counter initialization [PR97421]
@@ -868,8 +889,9 @@ Segher Boessenkool (1):
 Stam Markianos-Wright (1):
       Backport of the patch for PR target/91816
 
-Stefan Schulze Frielinghaus (1):
+Stefan Schulze Frielinghaus (2):
       S/390: Emit vector alignment hints for z13 if AS accepts them
+      PR rtl-optimization/100263: Ensure register can change mode
 
 Sylvia Taylor (1):
       add intrinsics for vld1(q)_x4 and vst1(q)_x4
@@ -6315,10 +6337,102 @@ index a2f28f43be3..6da4de57dc6 100644
 -8.4.0
 +8.4.1
 diff --git a/gcc/ChangeLog b/gcc/ChangeLog
-index 142499c563c..472322cf056 100644
+index 142499c563c..1eca96baa5d 100644
 --- a/gcc/ChangeLog
 +++ b/gcc/ChangeLog
-@@ -1,3 +1,2669 @@
+@@ -1,3 +1,2761 @@
++2021-05-04  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-05-02  Jakub Jelinek  <jakub@redhat.com>
++
++	PR target/100375
++	* config/nvptx/nvptx.c (nvptx_sese_pseudo): Use NULL instead of 0
++	as first argument of pseudo_node_t constructors.
++
++2021-05-04  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-04-29  Jakub Jelinek  <jakub@redhat.com>
++
++	PR target/100302
++	* config/aarch64/aarch64.c (aarch64_add_offset_1_temporaries): Use
++	absu_hwi instead of abs_hwi.
++
++2021-05-04  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-04-27  Jakub Jelinek  <jakub@redhat.com>
++
++	PR rtl-optimization/100254
++	* cfgcleanup.c (outgoing_edges_match): Check REG_EH_REGION on
++	last1 and last2 insns rather than BB_END (bb1) and BB_END (bb2) insns.
++
++2021-05-04  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-04-26  Jakub Jelinek  <jakub@redhat.com>
++
++	PR debug/100255
++	* vmsdbgout.c (ASM_OUTPUT_DEBUG_STRING, vmsdbgout_begin_block,
++	vmsdbgout_end_block, lookup_filename, vmsdbgout_source_line): Remove
++	register keywords.
++
++2021-05-04  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-04-21  Jakub Jelinek  <jakub@redhat.com>
++
++	PR rtl-optimization/100148
++	* cprop.c (constprop_register): Use next_nondebug_insn instead of
++	NEXT_INSN.
++
++2021-05-04  Richard Sandiford  <richard.sandiford@arm.com>
++
++	Backported from master:
++	2018-09-20  Richard Sandiford  <richard.sandiford@arm.com>
++
++	PR tree-optimization/86877
++	* tree-vect-loop.c (vect_analyze_loop_2): Call
++	vect_verify_datarefs_alignment.
++
++2021-05-04  Richard Biener  <rguenther@suse.de>
++
++	Backported from master:
++	2018-06-15  Richard Biener  <rguenther@suse.de>
++
++	PR middle-end/86159
++	* tree-cfg.c (gimplify_build3): Do not strip sign conversions,
++	leave useless conversion stripping to force_gimple_operand_gsi.
++	(gimplify_build2): Likewise.
++	(gimplify_build1): Likewise.
++
++2021-05-04  Alexander Monakov  <amonakov@ispras.ru>
++
++	Backported from master:
++	2019-03-01  Alexander Monakov  <amonakov@ispras.ru>
++
++	PR rtl-optimization/85899
++	* haifa-sched.c (find_fallthru_edge_from): Relax assert to account for
++	fallthru edges leading to the exit block.
++
++2021-05-04  Jeff Law  <law@redhat.com>
++
++	Backported from master:
++	2019-04-03  Jeff Law  <law@redhat.com>
++
++	PR rtl-optimization/81025
++	* reorg.c (skip_consecutive_labels): Do not skip past a BARRIER.
++
++2021-04-30  James Clarke  <jrtc27@jrtc27.com>
++
++	Backported from master:
++	2021-04-30  James Clarke  <jrtc27@jrtc27.com>
++
++	PR bootstrap/87338
++	* dwarf2out.c (dwarf2out_inline_entry): Use ASM_OUTPUT_DEBUG_LABEL
++	instead of ASM_GENERATE_INTERNAL_LABEL and ASM_OUTPUT_LABEL.
++
 +2021-04-29  Richard Biener  <rguenther@suse.de>
 +
 +	Backported from master:
@@ -9749,6 +9863,21 @@ index 1d10298818f..30cbb50406b 100644
  	}
  
        if (control_flow_insn_p (insn))
+diff --git a/gcc/cfgcleanup.c b/gcc/cfgcleanup.c
+index ac1263b7d1a..72050d6d601 100644
+--- a/gcc/cfgcleanup.c
++++ b/gcc/cfgcleanup.c
+@@ -1879,8 +1879,8 @@ outgoing_edges_match (int mode, basic_block bb1, basic_block bb2)
+ 
+   /* Ensure the same EH region.  */
+   {
+-    rtx n1 = find_reg_note (BB_END (bb1), REG_EH_REGION, 0);
+-    rtx n2 = find_reg_note (BB_END (bb2), REG_EH_REGION, 0);
++    rtx n1 = find_reg_note (last1, REG_EH_REGION, 0);
++    rtx n2 = find_reg_note (last2, REG_EH_REGION, 0);
+ 
+     if (!n1 && n2)
+       return false;
 diff --git a/gcc/cfgexpand.c b/gcc/cfgexpand.c
 index 18565bf1dab..f9e53248ede 100644
 --- a/gcc/cfgexpand.c
@@ -11061,7 +11190,7 @@ index ea9ead234cb..0f242630f46 100644
 +
  #undef AARCH64_EXTRA_TUNING_OPTION
 diff --git a/gcc/config/aarch64/aarch64.c b/gcc/config/aarch64/aarch64.c
-index 20761578fb6..c1827beeaf7 100644
+index 20761578fb6..4ad73220337 100644
 --- a/gcc/config/aarch64/aarch64.c
 +++ b/gcc/config/aarch64/aarch64.c
 @@ -760,6 +760,58 @@ static const struct tune_params cortexa72_tunings =
@@ -11215,6 +11344,15 @@ index 20761578fb6..c1827beeaf7 100644
  /* Build the SYMBOL_REF for __tls_get_addr.  */
  
  static GTY(()) rtx tls_get_addr_libfunc;
+@@ -2454,7 +2566,7 @@ aarch64_mov128_immediate (rtx imm)
+ static unsigned int
+ aarch64_add_offset_1_temporaries (HOST_WIDE_INT offset)
+ {
+-  return abs_hwi (offset) < 0x1000000 ? 0 : 1;
++  return absu_hwi (offset) < 0x1000000 ? 0 : 1;
+ }
+ 
+ /* A subroutine of aarch64_add_offset.  Set DEST to SRC + OFFSET for
 @@ -2481,7 +2593,7 @@ aarch64_add_offset_1 (scalar_int_mode mode, rtx dest,
    gcc_assert (emit_move_imm || temp1 != NULL_RTX);
    gcc_assert (temp1 == NULL_RTX || !reg_overlap_mentioned_p (temp1, src));
@@ -26233,6 +26371,49 @@ index e7fda9abee4..f50547d389c 100644
   					  (int)(I)))
  #endif /* __OPTIMIZE__ */
  
+diff --git a/gcc/config/nvptx/nvptx.c b/gcc/config/nvptx/nvptx.c
+index 07ff1df4bb8..011551852ab 100644
+--- a/gcc/config/nvptx/nvptx.c
++++ b/gcc/config/nvptx/nvptx.c
+@@ -3415,9 +3415,9 @@ nvptx_sese_pseudo (basic_block me, bb_sese *sese, int depth, int dir,
+   edge e;
+   edge_iterator (ei);
+   int hi_back = depth;
+-  pseudo_node_t node_back (0, depth);
++  pseudo_node_t node_back (NULL, depth);
+   int hi_child = depth;
+-  pseudo_node_t node_child (0, depth);
++  pseudo_node_t node_child (NULL, depth);
+   basic_block child = NULL;
+   unsigned num_children = 0;
+   int usd = -dir * sese->dir;
+@@ -3484,7 +3484,7 @@ nvptx_sese_pseudo (basic_block me, bb_sese *sese, int depth, int dir,
+       else
+ 	{ /* Fallen off graph, backlink to entry node.  */
+ 	  hi_back = 0;
+-	  node_back = pseudo_node_t (0, 0);
++	  node_back = pseudo_node_t (NULL, 0);
+ 	}
+     }
+ 
+@@ -3505,7 +3505,7 @@ nvptx_sese_pseudo (basic_block me, bb_sese *sese, int depth, int dir,
+       else
+ 	{
+ 	  /* back edge to entry node */
+-	  sese->push (pseudo_node_t (0, 0));
++	  sese->push (pseudo_node_t (NULL, 0));
+ 	}
+     }
+   
+@@ -3514,7 +3514,7 @@ nvptx_sese_pseudo (basic_block me, bb_sese *sese, int depth, int dir,
+   if (!sese->brackets.length () || !edges || !edges->length ())
+     {
+       hi_back = 0;
+-      node_back = pseudo_node_t (0, 0);
++      node_back = pseudo_node_t (NULL, 0);
+       sese->push (node_back);
+     }
+ 
 diff --git a/gcc/config/pa/pa.c b/gcc/config/pa/pa.c
 index 5a2f943ddcc..649daf1ca92 100644
 --- a/gcc/config/pa/pa.c
@@ -27804,10 +27985,19 @@ index d6f2d5b2ed0..a3211db36c0 100644
  esac
  
 diff --git a/gcc/cp/ChangeLog b/gcc/cp/ChangeLog
-index a525d4f4f9e..34ecef36038 100644
+index a525d4f4f9e..410399a5241 100644
 --- a/gcc/cp/ChangeLog
 +++ b/gcc/cp/ChangeLog
-@@ -1,3 +1,300 @@
+@@ -1,3 +1,309 @@
++2021-04-30  Jason Merrill  <jason@redhat.com>
++
++	Backported from master:
++	2021-04-30  Jason Merrill  <jason@redhat.com>
++
++	PR c++/95719
++	* call.c (build_over_call): Look up the overrider in base_binfo.
++	* class.c (lookup_vfn_in_binfo): Look through BINFO_PRIMARY_P.
++
 +2021-04-22  Jakub Jelinek  <jakub@redhat.com>
 +
 +	Backported from master:
@@ -29015,6 +29205,32 @@ index 4cf92aea240..cbc98ecc24a 100644
  	  else
  	    {
  	      /* The default zero-initialization is fine for us; don't
+diff --git a/gcc/cprop.c b/gcc/cprop.c
+index e4df5092144..a10791878f7 100644
+--- a/gcc/cprop.c
++++ b/gcc/cprop.c
+@@ -1008,16 +1008,18 @@ static int
+ constprop_register (rtx from, rtx src, rtx_insn *insn)
+ {
+   rtx sset;
++  rtx_insn *next_insn;
+ 
+   /* Check for reg or cc0 setting instructions followed by
+      conditional branch instructions first.  */
+   if ((sset = single_set (insn)) != NULL
+-      && NEXT_INSN (insn)
+-      && any_condjump_p (NEXT_INSN (insn)) && onlyjump_p (NEXT_INSN (insn)))
++      && (next_insn = next_nondebug_insn (insn)) != NULL
++      && any_condjump_p (next_insn)
++      && onlyjump_p (next_insn))
+     {
+       rtx dest = SET_DEST (sset);
+       if ((REG_P (dest) || CC0_P (dest))
+-	  && cprop_jump (BLOCK_FOR_INSN (insn), insn, NEXT_INSN (insn),
++	  && cprop_jump (BLOCK_FOR_INSN (insn), insn, next_insn,
+ 			 from, src))
+ 	return 1;
+     }
 diff --git a/gcc/cse.c b/gcc/cse.c
 index a73a771041a..2382b24d816 100644
 --- a/gcc/cse.c
@@ -29877,9 +30093,18 @@ index a0ba414014d..7a426ab9be3 100644
  
  
 diff --git a/gcc/early-remat.c b/gcc/early-remat.c
-index 28eb9b4b2de..bba2c1a6db5 100644
+index 28eb9b4b2de..177dd424d7b 100644
 --- a/gcc/early-remat.c
 +++ b/gcc/early-remat.c
+@@ -1069,7 +1069,7 @@ early_remat::sort_candidates (void)
+ 
+   m_candidates.qsort (compare_candidates);
+ 
+-  delete postorder_index;
++  delete[] postorder_index;
+ }
+ 
+ /* Commit to the current candidate indices and initialize cross-references.  */
 @@ -1995,7 +1995,7 @@ early_remat::process_block (basic_block bb)
  	}
  
@@ -31461,6 +31686,19 @@ index fc717c5b242..934a927fc34 100644
  	      && ! defined_in_sese_p (name, region->region));
  
    int i;
+diff --git a/gcc/haifa-sched.c b/gcc/haifa-sched.c
+index 4a899b56173..ba70fc61518 100644
+--- a/gcc/haifa-sched.c
++++ b/gcc/haifa-sched.c
+@@ -8056,7 +8056,7 @@ find_fallthru_edge_from (basic_block pred)
+ 
+       if (e)
+ 	{
+-	  gcc_assert (e->dest == succ);
++	  gcc_assert (e->dest == succ || e->dest->index == EXIT_BLOCK);
+ 	  return e;
+ 	}
+     }
 diff --git a/gcc/hsa-gen.c b/gcc/hsa-gen.c
 index 7974fffe360..5a4b38d717b 100644
 --- a/gcc/hsa-gen.c
@@ -32256,6 +32494,20 @@ index 74215f24a4f..e54483c4606 100644
  DEFPARAM (PARAM_IPA_CP_VALUE_LIST_SIZE,
  	  "ipa-cp-value-list-size",
  	  "Maximum size of a list of values associated with each parameter for "
+diff --git a/gcc/postreload.c b/gcc/postreload.c
+index 184b158bb05..b97392337e7 100644
+--- a/gcc/postreload.c
++++ b/gcc/postreload.c
+@@ -1704,7 +1704,8 @@ move2add_valid_value_p (int regno, scalar_int_mode mode)
+     {
+       scalar_int_mode old_mode;
+       if (!is_a <scalar_int_mode> (reg_mode[regno], &old_mode)
+-	  || !MODES_OK_FOR_MOVE2ADD (mode, old_mode))
++	  || !MODES_OK_FOR_MOVE2ADD (mode, old_mode)
++	  || !REG_CAN_CHANGE_MODE_P (regno, old_mode, mode))
+ 	return false;
+       /* The value loaded into regno in reg_mode[regno] is also valid in
+ 	 mode after truncation only if (REG:mode regno) is the lowpart of
 diff --git a/gcc/print-rtl.c b/gcc/print-rtl.c
 index 37c0d53fae2..69ca73c3a6d 100644
 --- a/gcc/print-rtl.c
@@ -32288,10 +32540,32 @@ index 88299a8a905..0e4f72065a2 100644
        return label_ref_label (x) == label_ref_label (y);
      case SYMBOL_REF:
 diff --git a/gcc/reorg.c b/gcc/reorg.c
-index 904d91ec9e8..f4d39b8dd6e 100644
+index 904d91ec9e8..9ac3b891af7 100644
 --- a/gcc/reorg.c
 +++ b/gcc/reorg.c
-@@ -563,8 +563,9 @@ add_to_delay_list (rtx_insn *insn, vec<rtx_insn *> *delay_list)
+@@ -137,7 +137,20 @@ skip_consecutive_labels (rtx label_or_return)
+ 
+   rtx_insn *label = as_a <rtx_insn *> (label_or_return);
+ 
+-  for (insn = label; insn != 0 && !INSN_P (insn); insn = NEXT_INSN (insn))
++  /* __builtin_unreachable can create a CODE_LABEL followed by a BARRIER.
++
++     Since reaching the CODE_LABEL is undefined behavior, we can return
++     any code label and we're OK at runtime.
++
++     However, if we return a CODE_LABEL which leads to a shrinked wrapped
++     epilogue, but the path does not have a prologue, then we will trip
++     a sanity check in the dwarf2 cfi code which wants to verify that
++     the CFIs are all the same on the traces leading to the epilogue.
++
++     So we explicitly disallow looking through BARRIERS here.  */
++  for (insn = label;
++       insn != 0 && !INSN_P (insn) && !BARRIER_P (insn);
++       insn = NEXT_INSN (insn))
+     if (LABEL_P (insn))
+       label = insn;
+ 
+@@ -563,8 +576,9 @@ add_to_delay_list (rtx_insn *insn, vec<rtx_insn *> *delay_list)
  {
    /* If INSN has its block number recorded, clear it since we may
       be moving the insn to a new block.  */
@@ -32303,7 +32577,7 @@ index 904d91ec9e8..f4d39b8dd6e 100644
  }
  
  /* Delete INSN from the delay slot of the insn that it is in, which may
-@@ -3200,7 +3201,14 @@ relax_delay_slots (rtx_insn *first)
+@@ -3200,7 +3214,14 @@ relax_delay_slots (rtx_insn *first)
  
  	      if (invert_jump (jump_insn, label, 1))
  		{
@@ -32319,7 +32593,7 @@ index 904d91ec9e8..f4d39b8dd6e 100644
  		  next = jump_insn;
  		}
  
-@@ -3473,18 +3481,22 @@ relax_delay_slots (rtx_insn *first)
+@@ -3473,18 +3494,22 @@ relax_delay_slots (rtx_insn *first)
  
  	      if (invert_jump (delay_jump_insn, label, 1))
  		{
@@ -32508,10 +32782,72 @@ index d06e88a8135..25377232248 100644
  
    if (warn_packed && TREE_CODE (rli->t) == RECORD_TYPE
 diff --git a/gcc/testsuite/ChangeLog b/gcc/testsuite/ChangeLog
-index ab652ddc144..1f0d390f98b 100644
+index ab652ddc144..f6fd07ff2a3 100644
 --- a/gcc/testsuite/ChangeLog
 +++ b/gcc/testsuite/ChangeLog
-@@ -1,3 +1,1909 @@
+@@ -1,3 +1,1971 @@
++2021-05-04  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-04-27  Jakub Jelinek  <jakub@redhat.com>
++
++	PR rtl-optimization/100254
++	* g++.dg/opt/pr100254.C: New test.
++
++2021-05-04  Jakub Jelinek  <jakub@redhat.com>
++
++	Backported from master:
++	2021-04-21  Jakub Jelinek  <jakub@redhat.com>
++
++	PR rtl-optimization/100148
++	* g++.dg/opt/pr100148.C: New test.
++
++2021-05-04  Richard Sandiford  <richard.sandiford@arm.com>
++
++	Backported from master:
++	2018-09-20  Richard Sandiford  <richard.sandiford@arm.com>
++
++	PR tree-optimization/86877
++	* gfortran.dg/vect/vect-8-epilogue.F90: New test.
++
++2021-05-04  Richard Biener  <rguenther@suse.de>
++
++	Backported from master:
++	2018-06-15  Richard Biener  <rguenther@suse.de>
++
++	PR middle-end/86159
++	* g++.dg/pr86159.C: New testcase.
++
++2021-05-04  Alexander Monakov  <amonakov@ispras.ru>
++
++	Backported from master:
++	2019-03-01  Alexander Monakov  <amonakov@ispras.ru>
++
++	PR rtl-optimization/85899
++	* gcc.dg/pr85899.c: New test.
++
++2021-04-30  Jakub Jelinek  <jakub@redhat.com>
++
++	PR c++/98358
++	* g++.dg/template/pr98297.C: Expect error about shadowing template template
++	parameter rather than does not declare anything error.
++
++2021-04-30  Richard Biener  <rguenther@suse.de>
++
++	Backported from master:
++	2021-04-30  Richard Biener  <rguenther@suse.de>
++
++	PR c++/98032
++	* g++.dg/pr98032.C: New testcase.
++
++2021-04-30  Jason Merrill  <jason@redhat.com>
++
++	Backported from master:
++	2021-04-30  Jason Merrill  <jason@redhat.com>
++
++	PR c++/95719
++	* g++.dg/tree-ssa/final4.C: New test.
++
 +2021-04-29  Richard Biener  <rguenther@suse.de>
 +
 +	Backported from master:
@@ -36594,6 +36930,145 @@ index 00000000000..ae2dc98efc4
 +int main() {
 +  MakeAndRegisterTestInfo(new TestFactoryImpl<Test>);
 +}
+diff --git a/gcc/testsuite/g++.dg/opt/pr100148.C b/gcc/testsuite/g++.dg/opt/pr100148.C
+new file mode 100644
+index 00000000000..d038879b6b8
+--- /dev/null
++++ b/gcc/testsuite/g++.dg/opt/pr100148.C
+@@ -0,0 +1,27 @@
++// PR rtl-optimization/100148
++// { dg-do compile }
++// { dg-options "-O2 -fno-dce -fno-tree-dce -fno-tree-dominator-opts -fno-tree-sink -fcompare-debug" }
++
++int i;
++enum E { } e, ee;
++
++bool
++baz (int)
++{
++  return ee;
++}
++
++bool bar ();
++bool a, b;
++
++void
++foo ()
++{
++  switch (ee)
++    {
++    case 0:
++      e = E (a ? : i);
++    case 1:
++      !(b || baz (0) && bar ());
++    }
++}
+diff --git a/gcc/testsuite/g++.dg/opt/pr100254.C b/gcc/testsuite/g++.dg/opt/pr100254.C
+new file mode 100644
+index 00000000000..030da13011d
+--- /dev/null
++++ b/gcc/testsuite/g++.dg/opt/pr100254.C
+@@ -0,0 +1,100 @@
++// PR rtl-optimization/100254
++// { dg-do compile }
++// { dg-options "-O2 -fno-guess-branch-probability -fipa-pta -fnon-call-exceptions -fcompare-debug" }
++
++struct _Rb_tree_node_base {
++  typedef _Rb_tree_node_base *_Base_ptr;
++  typedef _Rb_tree_node_base *_Const_Base_ptr;
++  _Base_ptr _M_left;
++};
++template <typename _Key_compare> struct _Rb_tree_key_compare {
++  _Key_compare _M_key_compare;
++};
++struct _Rb_tree_header {
++  _Rb_tree_node_base _M_header;
++};
++struct _Rb_tree_iterator {
++  _Rb_tree_iterator(_Rb_tree_node_base::_Base_ptr);
++  friend bool operator==(_Rb_tree_iterator, _Rb_tree_iterator);
++};
++template <typename _Tp> struct _Rb_tree_const_iterator {
++  typedef _Rb_tree_const_iterator _Self;
++  _Rb_tree_const_iterator(_Rb_tree_node_base::_Const_Base_ptr) {}
++  _Tp operator*();
++  template <typename _Up>
++  friend bool operator!=(_Rb_tree_const_iterator<_Up>, _Rb_tree_const_iterator<_Up>);
++};
++template <typename _Key, typename _Val, typename _Compare> struct _Rb_tree {
++  template <typename _Key_compare>
++  struct _Rb_tree_impl : _Rb_tree_key_compare<_Key_compare>, _Rb_tree_header {};
++  _Rb_tree_impl<_Compare> _M_impl;
++  _Key _S_key();
++  typedef _Rb_tree_const_iterator<_Val> const_iterator;
++  const_iterator begin() { return _M_impl._M_header._M_left; }
++  _Rb_tree_iterator find(const _Key &);
++};
++template <typename _Key, typename _Val, typename _Compare>
++_Rb_tree_iterator _Rb_tree<_Key, _Val, _Compare>::find(const _Key &__k) {
++  _Rb_tree_iterator __j = 0;
++  return __j == 0 || _M_impl._M_key_compare(__k, _S_key()) ? 0 : __j;
++}
++template <typename _Key, typename _Compare = _Key> struct set {
++  typedef _Key key_type;
++  typedef _Rb_tree<key_type, _Key, _Compare> _Rep_type;
++  _Rep_type _M_t;
++  typedef typename _Rep_type::const_iterator iterator;
++  iterator begin() { return _M_t.begin(); }
++  iterator end();
++  void find(key_type __x) { _M_t.find(__x); }
++};
++struct WindowDesc {
++  WindowDesc(short);
++} _station_view_desc(0);
++struct Window {
++  void IsWidgetLowered();
++  virtual void OnClick(int, int, int);
++};
++int AllocateWindowDescFront_window_number;
++template <typename Wcls> void AllocateWindowDescFront(WindowDesc *desc, bool) {
++  Wcls(desc, AllocateWindowDescFront_window_number);
++}
++class CargoDataEntry;
++struct CargoSorter {
++  bool operator()(const CargoDataEntry *, const CargoDataEntry *) const;
++};
++struct CargoDataEntry {
++  ~CargoDataEntry();
++  char Retrieve_cargo;
++  void Retrieve() {
++    CargoDataEntry t(Retrieve_cargo);
++    children->find(&t);
++  }
++  CargoDataEntry(char);
++  set<CargoDataEntry *, CargoSorter> *children;
++};
++CargoDataEntry::CargoDataEntry(char) : children() {}
++CargoDataEntry::~CargoDataEntry() {
++  if (children)
++    for (set<CargoDataEntry *>::iterator i = children->begin();
++         i != children->end();)
++      delete *i;
++}
++bool CargoSorter::operator()(const CargoDataEntry *,
++                             const CargoDataEntry *) const { return false; }
++struct StationViewWindow : Window {
++  StationViewWindow(WindowDesc *, int);
++  CargoDataEntry HandleCargoWaitingClick_filter;
++  void OnClick(int, int widget, int) {
++    switch (widget) {
++    case 0:
++      HandleCargoWaitingClick_filter.Retrieve();
++      HandleCargoWaitingClick_filter.Retrieve();
++    case 1:
++      IsWidgetLowered();
++    }
++  }
++};
++void ShowStationViewWindow_station() {
++  AllocateWindowDescFront<StationViewWindow>(&_station_view_desc,
++                                             ShowStationViewWindow_station);
++}
 diff --git a/gcc/testsuite/g++.dg/opt/pr94618.C b/gcc/testsuite/g++.dg/opt/pr94618.C
 new file mode 100644
 index 00000000000..e6a81d2c5ab
@@ -36861,6 +37336,22 @@ index 00000000000..d791a14b136
 +{
 +  bar (2);
 +  __builtin_setjmp (b);
++}
+diff --git a/gcc/testsuite/g++.dg/pr86159.C b/gcc/testsuite/g++.dg/pr86159.C
+new file mode 100644
+index 00000000000..83168f50c4a
+--- /dev/null
++++ b/gcc/testsuite/g++.dg/pr86159.C
+@@ -0,0 +1,10 @@
++// { dg-do compile }
++// { dg-options "-O -w -Wno-psabi" }
++
++typedef int vec __attribute__((vector_size(32)));
++vec fn1()
++{
++  vec x, zero{};
++  vec one = zero + 1;
++  return x < zero ? one : zero;
 +}
 diff --git a/gcc/testsuite/g++.dg/pr93674.C b/gcc/testsuite/g++.dg/pr93674.C
 new file mode 100644
@@ -38678,6 +39169,29 @@ index 00000000000..d489cee0f52
 +void qux ();
 +void corge () { qux (i); }
 +void *j __attribute__((__used__)) = corge;
+diff --git a/gcc/testsuite/gcc.dg/pr85899.c b/gcc/testsuite/gcc.dg/pr85899.c
+new file mode 100644
+index 00000000000..eb2b175339c
+--- /dev/null
++++ b/gcc/testsuite/gcc.dg/pr85899.c
+@@ -0,0 +1,17 @@
++/* { dg-do compile { target powerpc*-*-* ia64-*-* i?86-*-* x86_64-*-* } } */
++/* { dg-options "-O2 -fschedule-insns -fselective-scheduling -funroll-loops -fno-gcse -fno-if-conversion -fno-ivopts" } */
++
++#define N 4096
++int cb[N];
++int cc[N];
++int cd[N];
++
++void init ()
++{
++  int i;
++  for (i = 0; i < N; ++i) {
++    cb[i] = 3 * i - 2048;
++    cc[i] = -5 * i + 93;
++    cd[i] = i % 2 ? 1 : -1;
++  }
++}
 diff --git a/gcc/testsuite/gcc.dg/pr90248.c b/gcc/testsuite/gcc.dg/pr90248.c
 new file mode 100644
 index 00000000000..2c89e1e4a4b
@@ -39606,6 +40120,35 @@ index 00000000000..ee9d076c02d
 +bar (void *p)
 +{
 +  asm volatile ("" : : "m" (*p));	/* { dg-warning "dereferencing 'void \\*' pointer" } */
++}
+diff --git a/gcc/testsuite/gcc.dg/torture/pr98786.c b/gcc/testsuite/gcc.dg/torture/pr98786.c
+new file mode 100644
+index 00000000000..ea364717af2
+--- /dev/null
++++ b/gcc/testsuite/gcc.dg/torture/pr98786.c
+@@ -0,0 +1,23 @@
++/* { dg-do compile } */
++/* { dg-additional-options "-fno-tree-dce" } */
++
++void
++func_30 (void);
++
++int __attribute__ ((pure, returns_twice))
++func_38 (int g_15, int p_39)
++{
++  return !!g_15 ? p_39 : 0;
++}
++
++void
++func_26 (int func_26___trans_tmp_1)
++{
++  long int l_37 = 0;
++  int __trans_tmp_1;
++
++  func_26___trans_tmp_1 = func_38 (func_26___trans_tmp_1, 1);
++  __trans_tmp_1 = func_38 (func_26___trans_tmp_1, l_37);
++  l_37 = 1;
++  func_30 ();
 +}
 diff --git a/gcc/testsuite/gcc.dg/torture/pr99954.c b/gcc/testsuite/gcc.dg/torture/pr99954.c
 new file mode 100644
@@ -47293,6 +47836,18 @@ index 00000000000..ed4b643acbf
 +  integer :: y(0,0)
 +  y = matmul (x, transpose(x))
 +end
+diff --git a/gcc/testsuite/gfortran.dg/vect/vect-8-epilogue.F90 b/gcc/testsuite/gfortran.dg/vect/vect-8-epilogue.F90
+new file mode 100644
+index 00000000000..2a09539a510
+--- /dev/null
++++ b/gcc/testsuite/gfortran.dg/vect/vect-8-epilogue.F90
+@@ -0,0 +1,6 @@
++! { dg-do compile }
++! { dg-require-effective-target vect_double }
++! { dg-additional-options "-finline-matmul-limit=0 --param vect-epilogues-nomask=1" }
++! { dg-additional-options "-mstrict-align" { target { aarch64*-*-* } } }
++
++#include "vect-8.f90"
 diff --git a/gcc/testsuite/gfortran.dg/warn_unused_dummy_argument_6.f90 b/gcc/testsuite/gfortran.dg/warn_unused_dummy_argument_6.f90
 new file mode 100644
 index 00000000000..72f6d5c0857
@@ -47576,7 +48131,7 @@ index e6b84041fc5..bdc3cd3b643 100644
 +    return [check_configured_with "with-tune=cortex-a76"]
 +}
 diff --git a/gcc/tree-cfg.c b/gcc/tree-cfg.c
-index baaf0b0eece..445657b0836 100644
+index baaf0b0eece..84e58e66628 100644
 --- a/gcc/tree-cfg.c
 +++ b/gcc/tree-cfg.c
 @@ -1768,6 +1768,7 @@ group_case_labels_stmt (gswitch *stmt)
@@ -47693,6 +48248,33 @@ index baaf0b0eece..445657b0836 100644
        pop_cfun ();
      }
  
+@@ -9208,8 +9250,6 @@ gimplify_build3 (gimple_stmt_iterator *gsi, enum tree_code code,
+   location_t loc = gimple_location (gsi_stmt (*gsi));
+ 
+   ret = fold_build3_loc (loc, code, type, a, b, c);
+-  STRIP_NOPS (ret);
+-
+   return force_gimple_operand_gsi (gsi, ret, true, NULL, true,
+                                    GSI_SAME_STMT);
+ }
+@@ -9224,8 +9264,6 @@ gimplify_build2 (gimple_stmt_iterator *gsi, enum tree_code code,
+   tree ret;
+ 
+   ret = fold_build2_loc (gimple_location (gsi_stmt (*gsi)), code, type, a, b);
+-  STRIP_NOPS (ret);
+-
+   return force_gimple_operand_gsi (gsi, ret, true, NULL, true,
+                                    GSI_SAME_STMT);
+ }
+@@ -9240,8 +9278,6 @@ gimplify_build1 (gimple_stmt_iterator *gsi, enum tree_code code, tree type,
+   tree ret;
+ 
+   ret = fold_build1_loc (gimple_location (gsi_stmt (*gsi)), code, type, a);
+-  STRIP_NOPS (ret);
+-
+   return force_gimple_operand_gsi (gsi, ret, true, NULL, true,
+                                    GSI_SAME_STMT);
+ }
 diff --git a/gcc/tree-data-ref.c b/gcc/tree-data-ref.c
 index fc86bc25951..c90e862fb16 100644
 --- a/gcc/tree-data-ref.c
@@ -48359,10 +48941,30 @@ index a61e5f3b43e..a976a12205f 100644
    add_candidate (data, iv->base, iv->step, false, use);
  
 diff --git a/gcc/tree-ssa-phiopt.c b/gcc/tree-ssa-phiopt.c
-index 53f46dc0350..c6826cb87a2 100644
+index 53f46dc0350..96c43eab937 100644
 --- a/gcc/tree-ssa-phiopt.c
 +++ b/gcc/tree-ssa-phiopt.c
-@@ -890,7 +890,7 @@ value_replacement (basic_block cond_bb, basic_block middle_bb,
+@@ -451,6 +451,9 @@ factor_out_conditional_conversion (edge e0, edge e1, gphi *phi,
+       if (!is_gimple_reg_type (TREE_TYPE (new_arg0)))
+ 	return NULL;
+     }
++  if (TREE_CODE (new_arg0) == SSA_NAME
++      && SSA_NAME_OCCURS_IN_ABNORMAL_PHI (new_arg0))
++    return NULL;
+ 
+   if (TREE_CODE (arg1) == SSA_NAME)
+     {
+@@ -465,6 +468,9 @@ factor_out_conditional_conversion (edge e0, edge e1, gphi *phi,
+       new_arg1 = gimple_assign_rhs1 (arg1_def_stmt);
+       if (convert_code == VIEW_CONVERT_EXPR)
+ 	new_arg1 = TREE_OPERAND (new_arg1, 0);
++      if (TREE_CODE (new_arg1) == SSA_NAME
++	  && SSA_NAME_OCCURS_IN_ABNORMAL_PHI (new_arg1))
++	return NULL;
+     }
+   else
+     {
+@@ -890,7 +896,7 @@ value_replacement (basic_block cond_bb, basic_block middle_bb,
    gimple *cond;
    edge true_edge, false_edge;
    enum tree_code code;
@@ -48371,7 +48973,7 @@ index 53f46dc0350..c6826cb87a2 100644
  
    /* If the type says honor signed zeros we cannot do this
       optimization.  */
-@@ -907,7 +907,7 @@ value_replacement (basic_block cond_bb, basic_block middle_bb,
+@@ -907,7 +913,7 @@ value_replacement (basic_block cond_bb, basic_block middle_bb,
        gsi_next_nondebug (&gsi);
        if (!is_gimple_assign (stmt))
  	{
@@ -48380,7 +48982,7 @@ index 53f46dc0350..c6826cb87a2 100644
  	  continue;
  	}
        /* Now try to adjust arg0 or arg1 according to the computation
-@@ -917,7 +917,7 @@ value_replacement (basic_block cond_bb, basic_block middle_bb,
+@@ -917,7 +923,7 @@ value_replacement (basic_block cond_bb, basic_block middle_bb,
  	     && jump_function_from_stmt (&arg0, stmt))
  	    || (lhs == arg1
  		&& jump_function_from_stmt (&arg1, stmt)))
@@ -48389,7 +48991,7 @@ index 53f46dc0350..c6826cb87a2 100644
      }
  
    cond = last_stmt (cond_bb);
-@@ -969,7 +969,7 @@ value_replacement (basic_block cond_bb, basic_block middle_bb,
+@@ -969,7 +975,7 @@ value_replacement (basic_block cond_bb, basic_block middle_bb,
        /* If the middle basic block was empty or is defining the
  	 PHI arguments and this is a single phi where the args are different
  	 for the edges e0 and e1 then we can remove the middle basic block. */
@@ -48398,7 +49000,7 @@ index 53f46dc0350..c6826cb87a2 100644
  	  && single_non_singleton_phi_for_edges (phi_nodes (gimple_bb (phi)),
  						 e0, e1) == phi)
  	{
-@@ -1087,7 +1087,7 @@ value_replacement (basic_block cond_bb, basic_block middle_bb,
+@@ -1087,7 +1093,7 @@ value_replacement (basic_block cond_bb, basic_block middle_bb,
        && profile_status_for_fn (cfun) != PROFILE_ABSENT
        && EDGE_PRED (middle_bb, 0)->probability < profile_probability::even ()
        /* If assign is cheap, there is no point avoiding it.  */
@@ -48684,6 +49286,42 @@ index e82c1fe027e..8e41f5faf83 100644
      }
    *niters_vector_ptr = niters_vector;
    *step_vector_ptr = step_vector;
+diff --git a/gcc/tree-vect-loop.c b/gcc/tree-vect-loop.c
+index ce87614d253..b0c43afa692 100644
+--- a/gcc/tree-vect-loop.c
++++ b/gcc/tree-vect-loop.c
+@@ -2297,20 +2297,21 @@ start_over:
+   if (!ok)
+     return false;
+ 
+-  /* Do not invoke vect_enhance_data_refs_alignment for eplilogue
+-     vectorization.  */
++  /* Do not invoke vect_enhance_data_refs_alignment for epilogue
++     vectorization, since we do not want to add extra peeling or
++     add versioning for alignment.  */
+   if (!LOOP_VINFO_EPILOGUE_P (loop_vinfo))
+-    {
+     /* This pass will decide on using loop versioning and/or loop peeling in
+        order to enhance the alignment of data references in the loop.  */
+     ok = vect_enhance_data_refs_alignment (loop_vinfo);
+-    if (!ok)
+-      {
+-	if (dump_enabled_p ())
+-	  dump_printf_loc (MSG_MISSED_OPTIMIZATION, vect_location,
+-			   "bad data alignment.\n");
+-        return false;
+-      }
++  else
++    ok = vect_verify_datarefs_alignment (loop_vinfo);
++  if (!ok)
++    {
++      if (dump_enabled_p ())
++	dump_printf_loc (MSG_MISSED_OPTIMIZATION, vect_location,
++			 "bad data alignment.\n");
++      return false;
+     }
+ 
+   if (slp)
 diff --git a/gcc/tree-vect-patterns.c b/gcc/tree-vect-patterns.c
 index 30c3daaa32f..2b532160113 100644
 --- a/gcc/tree-vect-patterns.c
@@ -48888,6 +49526,68 @@ index adf279152b4..294d1333ff4 100644
    if (! TREE_PUBLIC (decl))
      {
        error ("weak declaration of %q+D must be public", decl);
+diff --git a/gcc/vmsdbgout.c b/gcc/vmsdbgout.c
+index ad0eac2e7d0..472739bf892 100644
+--- a/gcc/vmsdbgout.c
++++ b/gcc/vmsdbgout.c
+@@ -365,13 +365,13 @@ static char text_end_label[MAX_ARTIFICIAL_LABEL_BYTES];
+ #define ASM_OUTPUT_DEBUG_STRING(FILE,P)		\
+   do						\
+     {						\
+-      register int slen = strlen (P);		\
+-      register const char *p = (P);		\
+-      register int i;				\
++      int slen = strlen (P);			\
++      const char *p = (P);			\
++      int i;					\
+       fprintf (FILE, "\t.ascii \"");		\
+       for (i = 0; i < slen; i++)		\
+ 	{					\
+-	  register int c = p[i];		\
++	  int c = p[i];				\
+ 	  if (c == '\"' || c == '\\')		\
+ 	    putc ('\\', FILE);			\
+ 	  if (c >= ' ' && c < 0177)		\
+@@ -1229,7 +1229,7 @@ vmsdbgout_end_epilogue (unsigned int line, const char *file)
+    a lexical block.  */
+ 
+ static void
+-vmsdbgout_begin_block (register unsigned line, register unsigned blocknum)
++vmsdbgout_begin_block (unsigned line, unsigned blocknum)
+ {
+   if (write_symbols == VMS_AND_DWARF2_DEBUG)
+     (*dwarf2_debug_hooks.begin_block) (line, blocknum);
+@@ -1242,7 +1242,7 @@ vmsdbgout_begin_block (register unsigned line, register unsigned blocknum)
+    lexical block.  */
+ 
+ static void
+-vmsdbgout_end_block (register unsigned line, register unsigned blocknum)
++vmsdbgout_end_block (unsigned line, unsigned blocknum)
+ {
+   if (write_symbols == VMS_AND_DWARF2_DEBUG)
+     (*dwarf2_debug_hooks.end_block) (line, blocknum);
+@@ -1315,8 +1315,8 @@ static unsigned int
+ lookup_filename (const char *file_name)
+ {
+   static unsigned int last_file_lookup_index = 0;
+-  register char *fn;
+-  register unsigned i;
++  char *fn;
++  unsigned i;
+   const char *fnam;
+   long long cdt = 0;
+   long ebk = 0;
+@@ -1405,8 +1405,8 @@ vmsdbgout_write_source_line (unsigned line, const char *filename,
+ }
+ 
+ static void
+-vmsdbgout_source_line (register unsigned line, unsigned int column,
+-		       register const char *filename,
++vmsdbgout_source_line (unsigned line, unsigned int column,
++		       const char *filename,
+                        int discriminator, bool is_stmt)
+ {
+   if (write_symbols == VMS_AND_DWARF2_DEBUG)
 diff --git a/gcc/wide-int.cc b/gcc/wide-int.cc
 index 81731465137..eb5eec4a4a6 100644
 --- a/gcc/wide-int.cc
@@ -56497,10 +57197,18 @@ index 1a37118c299..066079b3954 100644
    UnmapOrDie(oldstack.ss_sp, oldstack.ss_size);
  }
 diff --git a/libstdc++-v3/ChangeLog b/libstdc++-v3/ChangeLog
-index 1d6f972584a..720edc410f1 100644
+index 1d6f972584a..8cff63c6413 100644
 --- a/libstdc++-v3/ChangeLog
 +++ b/libstdc++-v3/ChangeLog
-@@ -1,3 +1,335 @@
+@@ -1,3 +1,343 @@
++2021-04-30  Jonathan Wakely  <jwakely@redhat.com>
++
++	Backported from master:
++	2021-04-30  Jonathan Wakely  <jwakely@redhat.com>
++
++	* include/bits/basic_string.h (__cpp_lib_constexpr_string):
++	Only define for C++17 and later.
++
 +2021-04-29  Jonathan Wakely  <jwakely@redhat.com>
 +
 +	Backported from master:
@@ -57596,10 +58304,10 @@ index 7b5b4c41209..49ecc8df8b4 100644
  
      <row>
 diff --git a/libstdc++-v3/include/bits/basic_string.h b/libstdc++-v3/include/bits/basic_string.h
-index 0f5d398fcf2..0be11c0c444 100644
+index 0f5d398fcf2..5eede562884 100644
 --- a/libstdc++-v3/include/bits/basic_string.h
 +++ b/libstdc++-v3/include/bits/basic_string.h
-@@ -48,11 +48,12 @@
+@@ -48,11 +48,15 @@
  # include <string_view>
  #endif
  
@@ -57608,7 +58316,10 @@ index 0f5d398fcf2..0be11c0c444 100644
  {
  _GLIBCXX_BEGIN_NAMESPACE_VERSION
  
-+#define __cpp_lib_constexpr_string 201611L
++#if __cplusplus >= 201703L
++// Support P0426R1 changes to char_traits in C++17.
++# define __cpp_lib_constexpr_string 201611L
++#endif
 +
  #if _GLIBCXX_USE_CXX11_ABI
  _GLIBCXX_BEGIN_NAMESPACE_CXX11
