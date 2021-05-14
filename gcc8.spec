@@ -4,7 +4,7 @@
 %define libstdcxx_full 6.0.25
 %define isl_version 0.16.1
 %define gccver 8
-%define gccpath gcc-8.4.0
+%define gccpath gcc-8.5.0
 
 # Highest optimisation ABI we target
 %define mtune haswell
@@ -15,10 +15,10 @@
 %define abi_package %{nil}
 
 Name     : gcc8
-Version  : 8.4.1
-Release  : 546
-URL      : http://www.gnu.org/software/gcc/
-Source0  : https://mirrors.kernel.org/gnu/gcc/gcc-8.4.0/gcc-8.4.0.tar.gz
+Version  : 8.5.0
+Release  : 547
+URL      : https://www.gnu.org/software/gcc/
+Source0  : https://mirrors.kernel.org/gnu/gcc/gcc-8.5.0/gcc-8.5.0.tar.xz
 Source1  : https://gcc.gnu.org/pub/gcc/infrastructure/isl-0.16.1.tar.bz2
 Source2  : DATESTAMP
 Source3  : REVISION
