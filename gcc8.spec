@@ -33,10 +33,8 @@ Patch2   : openmp-vectorize-v2.patch
 Patch3   : fortran-vector-v2.patch
 Patch5   : optimize.patch
 Patch6   : ipa-cp.patch
-Patch7   : max-is-safe-on-x86.patch
 Patch8	 : optimize-at-least-some.patch
 Patch9   : gomp-relax.patch
-Patch11  : memcpy-avx2.patch
 Patch12	 : avx512-when-we-ask-for-it.patch
 Patch13  : hj.patch
 Patch14  : arch-native-override.patch
@@ -185,17 +183,12 @@ GNU cc and gcc C compilers.
 %patch6 -p1
 %patch8 -p1
 %patch9 -p1
-#%patch11 -p1
-
 %patch12 -p1
 %patch13 -p1
 
 %patch14 -p1
 
 %patch17 -p1
-#%patch18 -p1
-#%patch20 -p1
-
 %patch21 -p1
 
 %patch30 -p1
