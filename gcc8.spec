@@ -16,7 +16,7 @@
 
 Name     : gcc8
 Version  : 8.5.0
-Release  : 547
+Release  : 548
 URL      : https://www.gnu.org/software/gcc/
 Source0  : https://mirrors.kernel.org/gnu/gcc/gcc-8.5.0/gcc-8.5.0.tar.xz
 Source1  : https://gcc.gnu.org/pub/gcc/infrastructure/isl-0.16.1.tar.bz2
@@ -38,11 +38,10 @@ Patch9   : gomp-relax.patch
 Patch12	 : avx512-when-we-ask-for-it.patch
 Patch13  : hj.patch
 Patch14  : arch-native-override.patch
-
+Patch15  : 0001-libsanitizer-Remove-cyclades-from-libsanitizer.patch
 
 # simplified version of gcc 8 upstream patch
 Patch17  : pow-optimization.patch
-
 
 # zero registers on ret to make ROP harder
 Patch21  : zero-regs-gcc8.patch
@@ -185,12 +184,10 @@ GNU cc and gcc C compilers.
 %patch9 -p1
 %patch12 -p1
 %patch13 -p1
-
 %patch14 -p1
-
+%patch15 -p1
 %patch17 -p1
 %patch21 -p1
-
 %patch30 -p1
 
 %patch0100 -p1
